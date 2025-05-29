@@ -1,0 +1,183 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Stemify Design System
+
+> **Purpose**: Complete visual design specification for Stemify UI. Contains color palette, typography, component patterns, and implementation code for consistent light/dark mode theming across all interfaces.
+
+## 🎨 Color Palette (Light + Dark Mode)
+
+### Core Color Tokens
+
+| Token | Dark HEX | Light HEX | Usage |
+|-------|----------|-----------|-------|
+| **Background** | `#0E0E10` | `#FFFFFF` | Main app background |
+| **Surface / Card** | `#1F1F23` | `#F3F4F6` | Cards, modals, panels |
+| **Accent Emerald** | `#22C55E` | `#22C55E` | CTAs, progress, success states |
+
+### Design Philosophy
+- **Dark mode**: Pro-audio UI aesthetic with deep neutrals
+- **Light mode**: Classic black-on-white legibility for accessibility
+- **Accent**: Vivid emerald (#22C55E) for energy and music industry vibes
+- **Logo Integration**: Audio waveform icon perfectly aligns with emerald accent color
+- **Brand Consistency**: Logo's modern aesthetic matches our clean, professional design system
+
+---
+
+## 🔤 Typography System
+
+| Role | Font Family | Usage |
+|------|-------------|-------|
+| **Body UI** | Inter | Buttons, labels, body text, navigation |
+| **Headings** | Sora | Page titles, section headers, hero text |
+| **Numbers/Timers** | Roboto Mono | Duration displays, file sizes, credits |
+
+### Font Characteristics
+- All fonts are Google Fonts (free, variable weight)
+- Optimized for web and mobile displays
+- High legibility across all screen sizes
+
+---
+
+## 🎛️ Tailwind CSS Configuration
+
+```js
+// tailwind.config.js
+module.exports = {
+  darkMode: 'class', // Enable class-based dark mode
+  theme: {
+    extend: {
+      colors: {
+        // Custom color system
+        bg: {
+          light: '#FFFFFF',
+          dark: '#0E0E10'
+        },
+        surface: {
+          light: '#F3F4F6', 
+          dark: '#1F1F23'
+        },
+        accent: '#22C55E',
+        
+        // Semantic color mappings
+        background: 'var(--bg)',
+        card: 'var(--surface)',
+        primary: '#22C55E',
+      },
+      fontFamily: {
+        sans: ['Inter', 'sans-serif'],
+        heading: ['Sora', 'sans-serif'], 
+        mono: ['Roboto Mono', 'monospace'],
+      },
+      
+      // Custom spacing for audio UI
+      spacing: {
+        '18': '4.5rem',
+        '88': '22rem',
+      }
+    }
+  }
+}
+```
+
+---
+
+## 🎨 CSS Variables Setup
+
+```css
+/* globals.css */
+:root {
+  --bg: #FFFFFF;
+  --surface: #F3F4F6;
+  --accent: #22C55E;
+}
+
+[data-theme="dark"] {
+  --bg: #0E0E10;
+  --surface: #1F1F23;
+  --accent: #22C55E;
+}
+
+/* Base styles */
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+}
+```
+
+---
+
+## 🧩 Component Design Patterns
+
+### Cards & Surfaces
+```jsx
+// Light mode: bg-surface-light
+// Dark mode: bg-surface-dark
+<div className="bg-surface-light dark:bg-surface-dark rounded-lg p-6">
+```
+
+### Primary Actions
+```jsx
+// Accent emerald for CTAs
+<button className="bg-accent hover:bg-accent/90 text-white">
+  Separate Audio
+</button>
+```
+
+### Typography Hierarchy
+```jsx
+// Headings with Sora
+<h1 className="font-heading text-3xl font-bold">Stemify</h1>
+
+// Body text with Inter
+<p className="font-sans text-base">Upload your audio file...</p>
+
+// Monospace for data
+<span className="font-mono text-sm">3:45 / 120 MB</span>
+```
+
+---
+
+## 🌓 Dark Mode Implementation
+
+### Next.js + Tailwind Setup
+1. Install `next-themes` for theme switching
+2. Use `class` strategy in Tailwind config
+3. Implement theme toggle component
+4. Apply `dark:` prefixes for dark mode styles
+
+### Theme Toggle Pattern
+```jsx
+import { useTheme } from 'next-themes'
+
+function ThemeToggle() {
+  const { theme, setTheme } = useTheme()
+  
+  return (
+    <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
+      {theme === 'dark' ? '☀️' : '🌙'}
+    </button>
+  )
+}
+```
+
+---
+
+## 📱 Responsive Design Principles
+
+- **Mobile-first**: Design for 375px+ screens
+- **Breakpoints**: Use Tailwind's default (sm, md, lg, xl, 2xl)
+- **Touch targets**: Minimum 44px for interactive elements
+- **Audio controls**: Larger touch areas for playback controls
+
+---
+
+## ♿ Accessibility Guidelines
+
+- **Contrast ratios**: WCAG AA compliant (4.5:1 minimum)
+- **Focus states**: Visible focus rings on all interactive elements
+- **Color independence**: Never rely solely on color for information
+- **Screen readers**: Proper ARIA labels for audio controls

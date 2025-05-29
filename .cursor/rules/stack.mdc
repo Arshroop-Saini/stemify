@@ -1,0 +1,83 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Stemify Tech Stack
+
+> **Purpose**: Complete technical architecture reference for Stemify music separation app. Defines all technologies, integrations, and data flow patterns for consistent implementation across frontend, backend, AI processing, and payments.
+
+## Frontend Framework
+- **Next.js 14+** with App Router
+  - TypeScript for type safety
+  - Server-side rendering and static generation
+  - API routes for backend functionality
+
+## UI & Styling
+- **Tailwind CSS** for utility-first styling
+- **shadcn/ui** component library
+  - Pre-built accessible components
+  - Customizable design system
+  - Radix UI primitives under the hood
+
+## AI & Machine Learning
+- **Vercel AI SDK** for AI integrations
+- **Python-based Audio Separation API**
+  - HT-Demucs model (htdemucs for standard, htdemucs_ft for pro quality)
+  - Deployed via Replicate API (~$0.037 per 3-min song)
+  - Called through Vercel Edge Functions
+
+## Backend & Database
+- **Supabase** as Backend-as-a-Service
+  - PostgreSQL database
+  - Real-time subscriptions
+  - File storage for audio files
+  - Row Level Security (RLS)
+
+## Authentication
+- **Supabase Auth** with Google OAuth
+  - Native Google sign-in integration
+  - JWT token management
+  - Protected routes and middleware
+
+## Payments
+- **Stripe** for payment processing
+  - Subscription management (Creator $9/mo, Studio $19/mo)
+  - One-time payments for credit packages
+  - Webhook handling for payment events
+  - Customer portal for subscription management
+
+## API & Edge Computing
+- **Vercel Edge Functions** for serverless compute
+  - Calling Python audio separation API
+  - Payment webhook handling
+  - File processing coordination
+  - Geographic edge distribution
+
+## File Handling
+- **Supabase Storage** for audio file management
+  - Secure file uploads (max 50MB)
+  - Automatic file cleanup based on subscription tier
+  - CDN distribution for fast downloads
+
+## Development Tools
+- **TypeScript** for type safety
+- **ESLint** and **Prettier** for code quality
+- **Tailwind CSS IntelliSense** for better DX
+
+## Deployment & Hosting
+- **Vercel** for frontend and edge functions
+- **Supabase Cloud** for database and storage
+- **Replicate** for AI model inference
+
+## Monitoring & Analytics
+- **Vercel Analytics** for performance monitoring
+- **Stripe Dashboard** for payment analytics
+- **Supabase Dashboard** for database monitoring
+
+## Key Integrations Flow
+1. **User uploads audio** → Supabase Storage
+2. **Separation request** → Vercel Edge Function → Python API (Replicate)
+3. **Processing status** → Real-time updates via Supabase
+4. **Payment processing** → Stripe → Webhook → Supabase (credit updates)
+5. **File delivery** → Supabase Storage → CDN → User download 

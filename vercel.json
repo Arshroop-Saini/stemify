@@ -1,0 +1,10 @@
+{
+  "env": {
+    "SIEVE_API_KEY": "@sieve-api-key"
+  },
+  "build": {
+    "env": {
+      "SIEVE_API_KEY": "@sieve-api-key"
+    }
+  }
+} 
