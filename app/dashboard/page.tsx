@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { ProtectedRoute } from '@/components/protected-route'
 import { FileUpload } from '@/components/file-upload'
 import { FileLibrary } from '@/components/file-library'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useAuth } from '@/components/auth-provider'
@@ -14,8 +14,8 @@ import { AudioPreview } from '@/components/audio-preview'
 import { SeparationInterface } from '@/components/separation-interface'
 import { SeparationResults } from '@/components/separation-results'
 import { getUserStats, getTierDisplayName, type UserStats } from '@/lib/user-stats'
-import { Clock, Music, Sparkles, Crown, Play, Coins } from 'lucide-react'
-import { SubscriptionManager } from '@/components/subscription-manager'
+import { Clock, Music, Sparkles, Crown, Play, Coins, Settings } from 'lucide-react'
+import Link from 'next/link'
 
 // Unified AudioFile interface matching database structure
 interface AudioFile {
@@ -34,7 +34,7 @@ interface AudioFile {
 
 export default function DashboardPage() {
   const { user } = useAuth()
-  const { balance: creditsBalance, totalCredits, loading: creditsLoading } = useCredits()
+  const { balance: creditsBalance, totalCredits, loading: creditsLoading, refreshBalance } = useCredits()
   const [selectedFile, setSelectedFile] = useState<AudioFile | null>(null)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const [userStats, setUserStats] = useState<UserStats | null>(null)
@@ -139,7 +139,7 @@ export default function DashboardPage() {
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-6 py-8">
+        <div className="container mx-auto px-6 pt-24 pb-8">
           {/* Header */}
           <div className="mb-8">
             <h1 className="text-3xl font-heading font-bold text-foreground mb-2">
@@ -151,7 +151,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Quick Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             <Card>
               <CardContent className="p-6">
                 <div className="flex items-center">
@@ -203,23 +203,6 @@ export default function DashboardPage() {
                     <p className="text-2xl font-bold font-mono">
                       {creditsLoading ? '...' : `${creditsBalance.toFixed(1)} / ${totalCredits.toFixed(1)}`}
                     </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      Available / Total
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center">
-                  <Crown className="h-8 w-8 text-yellow-500" />
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Plan</p>
-                    <p className="text-2xl font-bold">
-                      {statsLoading ? '...' : getTierDisplayName(userStats?.subscriptionTier || 'free')}
-                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -268,14 +251,6 @@ export default function DashboardPage() {
               </Card>
             </div>
           )}
-
-          {/* Subscription Management - New Section */}
-          <div className="mt-8">
-            <SubscriptionManager 
-              currentTier={userStats?.subscriptionTier || 'free'}
-              onTierChange={handleTierChange}
-            />
-          </div>
 
           {/* Separation Results History */}
           <div className="mt-8">

@@ -97,13 +97,12 @@ export async function deductCredits(
   userId: string,
   credits: number,
   jobId: string,
-  description: string = 'Audio separation job'
+  description: string = 'Audio separation job',
+  supabaseClient?: any // Optional authenticated client
 ): Promise<CreditOperation> {
-  const supabase = createClient()
+  const supabase = supabaseClient || createClient()
 
   try {
-    console.log('Attempting credit deduction:', { userId, credits, jobId, description })
-    
     const { data, error } = await supabase
       .rpc('deduct_credits', {
         user_id: userId,
@@ -111,8 +110,6 @@ export async function deductCredits(
         job_id: jobId,
         description
       })
-
-    console.log('Credit deduction RPC response:', { data, error })
 
     if (error) {
       console.error('Credit deduction RPC error details:', error)
@@ -122,7 +119,6 @@ export async function deductCredits(
       }
     }
 
-    console.log('Credit deduction successful, new balance:', data)
     return {
       success: true,
       message: `Successfully deducted ${credits} credits`,
@@ -216,41 +212,64 @@ export async function validateUserOperation(
     durationMinutes: number
     model: 'htdemucs' | 'htdemucs_6s' | 'htdemucs_ft'
     fileSize?: number
-  }
+  },
+  supabaseClient?: any // Optional authenticated client
 ): Promise<CreditOperation & { tier?: string }> {
-  const supabase = createClient()
+  const supabase = supabaseClient || createClient()
+
+  console.log('validateUserOperation called with:', {
+    userId,
+    operation: {
+      stems: operation.stems,
+      durationMinutes: operation.durationMinutes,
+      model: operation.model,
+      fileSize: operation.fileSize
+    },
+    hasAuthenticatedClient: !!supabaseClient
+  })
 
   try {
-    // For development/MVP: Default to free tier if no user record exists
-    let userTier = 'free'
-    let creditsRemaining = 100 // Give some free credits for testing
-    
-    // Try to get user's subscription tier and current usage
+    // Get user's subscription tier and current usage
     const { data: user, error } = await supabase
       .from('users')
       .select('subscription_tier, credits_remaining')
       .eq('id', userId)
       .single()
 
-    // If user exists in users table, use their data
-    if (user && !error) {
-      userTier = user.subscription_tier || 'free'
-      creditsRemaining = user.credits_remaining || 0
-    } else {
-      console.log('User not found in users table, defaulting to free tier with test credits')
+    console.log('User data retrieved:', { user, error })
+
+    if (error || !user) {
+      console.error('User lookup failed:', error)
+      return {
+        success: false,
+        message: 'User not found. Please ensure you have an active account.',
+        tier: 'free'
+      }
     }
 
+    const userTier = user.subscription_tier || 'free'
+    const creditsRemaining = user.credits_remaining || 0
+
+    console.log('User tier and credits:', { userTier, creditsRemaining })
+
     const tier = SUBSCRIPTION_TIERS[userTier as keyof typeof SUBSCRIPTION_TIERS]
+    console.log('Tier configuration:', tier)
+    
     const calculation = calculateCreditsRequired(
       operation.stems,
       operation.durationMinutes,
       operation.model
     )
 
+    console.log('Credit calculation result:', calculation)
+
     // Check tier-specific limitations
     if (userTier === 'free') {
+      console.log('Checking free tier limitations...')
+      
       // Free tier: only 4 stems (vocals, drums, bass, other)
       if (operation.stems.length > 4) {
+        console.log('Free tier stem count exceeded:', operation.stems.length)
         return {
           success: false,
           message: 'Free tier is limited to 4 stems. Upgrade to Creator or Studio for 6 stems.',
@@ -258,47 +277,67 @@ export async function validateUserOperation(
         }
       }
 
-      // Free tier: only htdemucs model (allow for now during development)
+      // Free tier: only standard model
       if (operation.model === 'htdemucs_ft') {
-        console.log('Fine-tuned model requested on free tier - allowing for development')
+        console.log('Free tier trying to use fine-tuned model')
+        return {
+          success: false,
+          message: 'Fine-tuned model is available for Creator and Studio plans only.',
+          tier: userTier
+        }
       }
 
-      // Check if stems are allowed for free tier (be permissive for development)
+      // Check if stems are allowed for free tier
       const allowedStems = tier.availableStems
+      console.log('Free tier allowed stems:', allowedStems)
+      console.log('Requested stems:', operation.stems)
+      
       const invalidStems = operation.stems.filter(stem => !allowedStems.includes(stem as any))
+      console.log('Invalid stems for free tier:', invalidStems)
+      
       if (invalidStems.length > 0) {
-        console.log(`Some stems not in free tier (${invalidStems.join(', ')}) - allowing for development`)
+        console.log('Free tier stem validation failed')
+        return {
+          success: false,
+          message: `Stems ${invalidStems.join(', ')} are not available on free tier. Upgrade to access all stems.`,
+          tier: userTier
+        }
       }
+    } else {
+      console.log('User is on paid tier, skipping free tier limitations')
     }
 
-    // For development: Always allow if we have test credits
-    if (creditsRemaining >= calculation.totalCost) {
+    // Check credit balance
+    console.log('Checking credit balance:', {
+      creditsRemaining,
+      requiredCredits: calculation.totalCost
+    })
+    
+    if (creditsRemaining < calculation.totalCost) {
+      console.log('Insufficient credits')
       return {
-        success: true,
-        message: 'Operation validated successfully',
+        success: false,
+        message: `Insufficient credits. You need ${calculation.totalCost.toFixed(1)} credits but only have ${creditsRemaining.toFixed(1)}.`,
         creditsRemaining,
         creditsRequired: calculation.totalCost,
         tier: userTier
       }
     }
 
-    // Check actual credit balance if no test credits
-    const creditCheck = await checkCreditBalance(userId, calculation.totalCost)
-    
+    console.log('All validations passed')
     return {
-      ...creditCheck,
+      success: true,
+      message: 'Operation validated successfully',
+      creditsRemaining,
+      creditsRequired: calculation.totalCost,
       tier: userTier
     }
 
   } catch (error) {
     console.error('Error in validateUserOperation:', error)
-    
-    // Fallback: Allow operation with free tier for development
     return {
-      success: true,
-      message: 'Validation bypassed for development',
-      creditsRemaining: 100,
-      creditsRequired: 10,
+      success: false,
+      message: 'Validation failed. Please try again.',
       tier: 'free'
     }
   }
@@ -391,12 +430,23 @@ export async function refreshMonthlyCredits(
   subscriptionTier: 'free' | 'creator' | 'studio'
 ): Promise<CreditOperation> {
   const supabase = createClient()
+  return refreshMonthlyCreditsWithClient(supabase, userId, subscriptionTier)
+}
 
+/**
+ * Refresh monthly credits for subscription renewal (webhook-compatible)
+ * @param supabaseClient - Pass service role client for webhooks, regular client for user operations
+ */
+export async function refreshMonthlyCreditsWithClient(
+  supabaseClient: any,
+  userId: string,
+  subscriptionTier: 'free' | 'creator' | 'studio'
+): Promise<CreditOperation> {
   try {
     const monthlyCredits = getMonthlyCreditsForTier(subscriptionTier)
     
     // Add new monthly credits (don't reset total_credits)
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .rpc('add_credits_with_total', {
         user_id: userId,
         credits_amount: monthlyCredits,
@@ -405,6 +455,7 @@ export async function refreshMonthlyCredits(
       })
 
     if (error) {
+      console.error('RPC error in refreshMonthlyCreditsWithClient:', error)
       return {
         success: false,
         message: 'Failed to refresh monthly credits'
@@ -417,6 +468,7 @@ export async function refreshMonthlyCredits(
       creditsRemaining: data
     }
   } catch (error) {
+    console.error('Error in refreshMonthlyCreditsWithClient:', error)
     return {
       success: false,
       message: 'Error refreshing monthly credits'
@@ -432,16 +484,28 @@ export async function updateUserSubscription(
   newTier: 'free' | 'creator' | 'studio'
 ): Promise<CreditOperation> {
   const supabase = createClient()
+  return updateUserSubscriptionWithClient(supabase, userId, newTier)
+}
 
+/**
+ * Update user subscription tier and adjust credits (webhook-compatible)
+ * @param supabaseClient - Pass service role client for webhooks, regular client for user operations
+ */
+export async function updateUserSubscriptionWithClient(
+  supabaseClient: any,
+  userId: string,
+  newTier: 'free' | 'creator' | 'studio'
+): Promise<CreditOperation> {
   try {
     // Get current user data
-    const { data: currentUser, error: fetchError } = await supabase
+    const { data: currentUser, error: fetchError } = await supabaseClient
       .from('users')
       .select('subscription_tier, credits_remaining')
       .eq('id', userId)
       .single()
 
     if (fetchError || !currentUser) {
+      console.error('Failed to fetch user in updateUserSubscriptionWithClient:', fetchError)
       return {
         success: false,
         message: 'Failed to fetch current user data'
@@ -456,7 +520,7 @@ export async function updateUserSubscription(
     const newCreditsRemaining = Math.max(0, currentUser.credits_remaining + creditDifference)
 
     // Update subscription tier and adjust credits
-    const { error } = await supabase
+    const { error } = await supabaseClient
       .from('users')
       .update({
         subscription_tier: newTier,
@@ -466,6 +530,7 @@ export async function updateUserSubscription(
       .eq('id', userId)
 
     if (error) {
+      console.error('Failed to update user subscription in database:', error)
       return {
         success: false,
         message: 'Failed to update subscription'
@@ -474,7 +539,7 @@ export async function updateUserSubscription(
 
     // Log the subscription change
     if (creditDifference !== 0) {
-      await supabase
+      const { error: logError } = await supabaseClient
         .from('credits')
         .insert({
           user_id: userId,
@@ -484,6 +549,11 @@ export async function updateUserSubscription(
           separation_job_id: null,
           payment_id: null
         })
+
+      if (logError) {
+        console.error('Failed to log subscription change:', logError)
+        // Don't fail the operation for logging errors
+      }
     }
 
     return {
@@ -492,6 +562,7 @@ export async function updateUserSubscription(
       creditsRemaining: newCreditsRemaining
     }
   } catch (error) {
+    console.error('Error in updateUserSubscriptionWithClient:', error)
     return {
       success: false,
       message: 'Error updating subscription'

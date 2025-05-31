@@ -4,9 +4,12 @@ import { useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { CREDIT_PACKAGES } from '@/lib/constants'
+import { STRIPE_CREDIT_PACKAGES } from '@/lib/stripe-config'
+import { redirectToCheckout } from '@/lib/stripe-client'
 import { useCredits } from '@/hooks/use-credits'
 import { useAuth } from '@/components/auth-provider'
+import { toast } from 'sonner'
+import { ExternalLink, Loader2 } from 'lucide-react'
 
 interface CreditPurchaseProps {
   onPurchaseComplete?: () => void
@@ -18,25 +21,37 @@ export function CreditPurchase({ onPurchaseComplete, showBalance = true }: Credi
   const { balance, refreshBalance } = useCredits()
   const [loading, setLoading] = useState<string | null>(null)
 
-  const handlePurchase = async (packageKey: keyof typeof CREDIT_PACKAGES) => {
-    if (!user) return
+  const handlePurchase = async (packageKey: keyof typeof STRIPE_CREDIT_PACKAGES) => {
+    if (!user) {
+      toast.error('Please sign in to purchase credits')
+      return
+    }
 
     setLoading(packageKey)
     
     try {
-      // TODO: Integrate with Stripe checkout
-      // For now, just show that the purchase flow would start
-      console.log(`Starting purchase for ${packageKey} package`)
-      
-      // Simulate purchase process
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      // Refresh balance after purchase
-      await refreshBalance()
-      onPurchaseComplete?.()
-      
+      const response = await fetch('/api/checkout/credits', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          packageKey: packageKey,
+          userId: user.id
+        })
+      })
+
+      const data = await response.json()
+
+      if (response.ok && data.sessionId) {
+        // Redirect to Stripe checkout
+        await redirectToCheckout(data.sessionId)
+      } else {
+        toast.error(data.error || 'Failed to create checkout session')
+      }
     } catch (error) {
-      console.error('Purchase failed:', error)
+      console.error('Credit purchase error:', error)
+      toast.error('Failed to start checkout process')
     } finally {
       setLoading(null)
     }
@@ -46,44 +61,66 @@ export function CreditPurchase({ onPurchaseComplete, showBalance = true }: Credi
     return `$${(cents / 100).toFixed(2)}`
   }
 
-  const formatCreditsAsMinutes = (credits: number) => {
-    // New pricing: 1 credit = 1 minute (base rate)
-    return `${credits} min`
+  const getBestValuePackage = () => {
+    const packages = Object.entries(STRIPE_CREDIT_PACKAGES)
+    const bestValue = packages.reduce((best, [key, pkg]) => {
+      const costPerCredit = pkg.amount / pkg.credits
+      const bestCostPerCredit = best.pkg.amount / best.pkg.credits
+      return costPerCredit < bestCostPerCredit ? { key, pkg } : best
+    }, { key: packages[0][0], pkg: packages[0][1] })
+    
+    return bestValue.key
   }
+
+  const bestValueKey = getBestValuePackage()
 
   return (
     <div className="space-y-6">
       {showBalance && (
         <div className="text-center">
-          <div className="text-2xl font-bold text-accent">{balance}</div>
+          <div className="text-2xl font-bold text-accent">{balance.toFixed(1)}</div>
           <div className="text-sm text-muted-foreground">Credits Available</div>
         </div>
       )}
 
       <div className="grid md:grid-cols-3 gap-4">
-        {Object.entries(CREDIT_PACKAGES).map(([key, pkg]) => {
-          const packageKey = key as keyof typeof CREDIT_PACKAGES
+        {Object.entries(STRIPE_CREDIT_PACKAGES).map(([key, pkg]) => {
+          const packageKey = key as keyof typeof STRIPE_CREDIT_PACKAGES
           const isLoading = loading === packageKey
+          const isBestValue = key === bestValueKey
+          const costPerCredit = pkg.amount / pkg.credits
           
           return (
-            <Card key={key} className="relative">
+            <Card key={key} className={`relative transition-all duration-200 ${
+              isBestValue 
+                ? 'ring-2 ring-accent border-accent scale-105' 
+                : 'border-gray-200 hover:border-gray-300'
+            }`}>
+              {isBestValue && (
+                <div className="absolute -top-2 left-1/2 transform -translate-x-1/2">
+                  <Badge className="bg-accent text-white">
+                    Best Value
+                  </Badge>
+                </div>
+              )}
+
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="font-heading">{pkg.name}</CardTitle>
                   {key === 'medium' && (
-                    <Badge variant="default" className="bg-accent">
+                    <Badge variant="secondary" className="bg-green-100 text-green-700">
                       Popular
                     </Badge>
                   )}
                 </div>
-                <CardDescription>{pkg.minutes} minutes of processing</CardDescription>
+                <CardDescription>{pkg.description}</CardDescription>
               </CardHeader>
               
               <CardContent className="space-y-4">
                 <div className="text-center">
-                  <div className="text-3xl font-bold">${pkg.price}</div>
+                  <div className="text-3xl font-bold">{formatPrice(pkg.amount)}</div>
                   <div className="text-sm text-muted-foreground">
-                    {pkg.credits} credits ({pkg.minutes} minutes)
+                    {pkg.credits} credits
                   </div>
                 </div>
 
@@ -94,12 +131,12 @@ export function CreditPurchase({ onPurchaseComplete, showBalance = true }: Credi
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Processing time:</span>
-                    <span className="font-medium">{pkg.minutes} minutes</span>
+                    <span className="font-medium">{pkg.credits} minutes</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Cost per minute:</span>
                     <span className="font-medium">
-                      ${(pkg.price / pkg.minutes).toFixed(2)}
+                      ${(costPerCredit / 100).toFixed(3)}
                     </span>
                   </div>
                 </div>
@@ -107,10 +144,20 @@ export function CreditPurchase({ onPurchaseComplete, showBalance = true }: Credi
                 <Button 
                   onClick={() => handlePurchase(packageKey)}
                   disabled={!user || isLoading}
-                  className="w-full"
-                  variant={key === 'medium' ? 'default' : 'outline'}
+                  className={`w-full ${isBestValue ? 'bg-accent hover:bg-accent/90' : ''}`}
+                  variant={isBestValue ? 'default' : 'outline'}
                 >
-                  {isLoading ? 'Processing...' : 'Purchase Credits'}
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      Purchase Credits
+                      <ExternalLink className="w-4 h-4 ml-2" />
+                    </>
+                  )}
                 </Button>
               </CardContent>
             </Card>
@@ -118,9 +165,10 @@ export function CreditPurchase({ onPurchaseComplete, showBalance = true }: Credi
         })}
       </div>
 
-      <div className="text-center text-sm text-muted-foreground">
-        <p>Credits never expire and can be used for any audio separation job.</p>
-        <p>Need more credits? Contact us for custom packages.</p>
+      <div className="text-center text-sm text-muted-foreground space-y-2">
+        <p>💳 Secure payment processing by Stripe</p>
+        <p>⏰ Credits never expire and can be used for any audio separation job</p>
+        <p>📧 Need more credits? Contact us for custom packages</p>
       </div>
     </div>
   )

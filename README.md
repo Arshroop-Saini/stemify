@@ -6,7 +6,7 @@ Stemify is a modern web application that uses advanced AI technology to separate
 
 - **AI-Powered Separation**: Extract vocals, drums, bass, guitar, and piano from any audio track
 - **Multiple Quality Levels**: Standard and Pro quality separation options
-- **Flexible Pricing**: Free tier, Creator ($9/mo), and Studio ($19/mo) plans
+- **Flexible Pricing**: Free tier, Creator ($9/mo or $60/year), and Studio ($19/mo or $180/year) plans with yearly savings
 - **Real-time Processing**: Live progress updates during separation
 - **Dark/Light Mode**: Beautiful UI with theme switching
 - **Secure Storage**: Automatic file cleanup based on subscription tier
@@ -127,10 +127,14 @@ See `env.template` for all required environment variables:
 
 ## 📊 Pricing Plans
 
-### **Monthly Subscriptions**
+### **Subscription Plans**
 - **Free**: 5 min/month, 4 stems (vocals, drums, bass, other), 320kbps MP3, watermark
-- **Creator**: $9/month, 60 min/month, 6 stems (+ guitar, piano), WAV + MP3, fine-tuned model option
-- **Studio**: $19/month, 200 min/month, 6 stems (+ guitar, piano), WAV + MP3, fine-tuned model option
+- **Creator**: 
+  - Monthly: $9/month | Yearly: $60/year (save $48/year - 44% discount)
+  - 60 min/month, 6 stems (+ guitar, piano), WAV + MP3, fine-tuned model option
+- **Studio**: 
+  - Monthly: $19/month | Yearly: $180/year (save $48/year - 21% discount) 
+  - 200 min/month, 6 stems (+ guitar, piano), WAV + MP3, fine-tuned model option
 
 ### **Pay-as-you-go Credits**
 - **Small**: 30 minutes for $5

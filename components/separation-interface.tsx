@@ -14,6 +14,7 @@ import { useAuth } from '@/components/auth-provider'
 import { SUBSCRIPTION_TIERS, SIEVE_CONFIG } from '@/lib/constants'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase'
+import { getUserStats } from '@/lib/user-stats'
 
 // Audio file interface based on database structure
 interface AudioFile {
@@ -113,24 +114,38 @@ export function SeparationInterface({ selectedFile, className, onSeparationCompl
 
   // Mock user tier - in real app, get from user profile
   useEffect(() => {
-    // This should be fetched from user profile
-    // For now, using mock data
-    setUserTier('free')
-  }, [])
+    // Fetch actual user subscription tier
+    const fetchUserTier = async () => {
+      if (user?.id) {
+        try {
+          const stats = await getUserStats(user.id)
+          setUserTier(stats.subscriptionTier)
+        } catch (error) {
+          console.error('Failed to fetch user tier:', error)
+          setUserTier('free') // Fallback to free
+        }
+      }
+    }
+    
+    fetchUserTier()
+  }, [user?.id])
 
   // Calculate processing estimate
   const calculateEstimate = useCallback(() => {
-    if (!selectedFile) return { time: 0, cost: 0 }
+    if (!selectedFile || !selectedFile.duration) return { trackLength: 0, cost: 0 }
     
-    const durationMinutes = selectedFile.duration ? Math.ceil(selectedFile.duration / 60) : 3
-    const baseTime = durationMinutes * selectedStems.length
-    const multiplier = quality === 'pro' ? 4 : 1
+    // Convert seconds to minutes with precision
+    const durationMinutes = selectedFile.duration / 60
+    
+    // Credit calculation: 1x duration for normal, 2x duration for pro (regardless of stem count)
+    const creditMultiplier = quality === 'pro' ? 2 : 1
+    const totalCost = durationMinutes * creditMultiplier
     
     return {
-      time: baseTime * multiplier,
-      cost: Math.ceil(durationMinutes * selectedStems.length * (quality === 'pro' ? 2 : 1))
+      trackLength: durationMinutes, // Actual track length in minutes
+      cost: Number(totalCost.toFixed(1)) // Credits required based on model
     }
-  }, [selectedFile, selectedStems, quality])
+  }, [selectedFile, quality])
 
   // Handle stem selection
   const handleStemToggle = useCallback((stemId: string) => {
@@ -517,8 +532,8 @@ export function SeparationInterface({ selectedFile, className, onSeparationCompl
             </div>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <span className="text-gray-600 dark:text-gray-400">Processing Time:</span>
-                <div className="font-mono font-bold">{estimate.time} minutes</div>
+                <span className="text-gray-600 dark:text-gray-400">Track Length:</span>
+                <div className="font-mono font-bold">{estimate.trackLength.toFixed(2)} minutes</div>
               </div>
               <div>
                 <span className="text-gray-600 dark:text-gray-400">Credits Required:</span>

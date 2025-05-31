@@ -9,7 +9,7 @@ export function createClient() {
   )
 }
 
-// Server-side Supabase client
+// Server-side Supabase client (with user session)
 export async function createServerSupabaseClient() {
   const { cookies } = await import('next/headers')
   const cookieStore = await cookies()
@@ -24,5 +24,17 @@ export async function createServerSupabaseClient() {
         },
       },
     }
+  )
+}
+
+// Service role client for webhooks and admin operations (bypasses RLS)
+export function createServiceRoleClient() {
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY is required for service role operations')
+  }
+
+  return createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 } 

@@ -97,22 +97,41 @@ export async function POST(request: NextRequest) {
     const preciseDurationMinutes = audioFile.duration / 60
     console.log(`Precise duration for credits: ${preciseDurationMinutes} minutes`)
 
-    // Estimate duration and validate operation (keep for validation)
-    const estimatedDuration = Math.ceil(audioFile.duration / 60)
+    // Use precise duration for validation (not rounded up)
+    const validationDurationMinutes = preciseDurationMinutes
+    
+    // Add diagnostic logging for validation
+    console.log('About to validate operation with params:', {
+      userId: user.id,
+      stems: selectedStems,
+      durationMinutes: validationDurationMinutes,
+      model: 'htdemucs',
+      fileSize: audioFile.file_size
+    })
     
     const validation = await validateUserOperation(user.id, {
       stems: selectedStems as any[],
-      durationMinutes: estimatedDuration,
+      durationMinutes: validationDurationMinutes,
       model: 'htdemucs' as any,
       fileSize: audioFile.file_size
-    })
+    }, supabase)
+
+    console.log('Validation result:', validation)
 
     if (!validation.success) {
+      console.error('Validation failed:', {
+        message: validation.message,
+        creditsRemaining: validation.creditsRemaining,
+        creditsRequired: validation.creditsRequired,
+        tier: validation.tier
+      })
       return NextResponse.json({ 
         error: validation.message,
         code: 'VALIDATION_FAILED'
       }, { status: 400 })
     }
+
+    console.log('Validation passed successfully')
 
     // Get audio file public URL
     const { data: publicUrlData } = supabase.storage
@@ -214,7 +233,8 @@ export async function POST(request: NextRequest) {
           user.id,
           creditsCalculation.totalCost,
           separationJob.id,
-          `Audio separation: ${selectedStems.length} stems, ${preciseDurationMinutes} min`
+          `Audio separation: ${selectedStems.length} stems, ${preciseDurationMinutes} min`,
+          supabase
         )
         
         console.log('Credit deduction result:', creditResult)

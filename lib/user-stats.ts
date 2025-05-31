@@ -32,7 +32,6 @@ export async function getUserStats(userId: string): Promise<UserStats> {
   try {
     // Get usage data from new tracking system
     const usage = await subscriptionService.getUserUsage(userId)
-    const limits = TIER_LIMITS[usage.subscriptionTier]
     
     // Get current files and storage (for active storage calculation)
     const supabase = createClient()
@@ -49,15 +48,19 @@ export async function getUserStats(userId: string): Promise<UserStats> {
     // Get credits from users table
     const { data: userData } = await supabase
       .from('users')
-      .select('credits_remaining')
+      .select('credits_remaining, total_credits')
       .eq('id', userId)
       .single()
     
+    // Use total_credits as the minutes limit since 1 credit = 1 minute
+    // This includes both subscription credits AND purchased credit packages
+    const totalMinutesAvailable = userData?.total_credits || 5 // Fallback to free tier limit
+    
     return {
-      // Monthly audio content usage
+      // Monthly audio content usage - now shows total available minutes (including purchased credits)
       minutesUsed: usage.monthlyAudioMinutesUsed,
-      minutesLimit: limits.minutesPerMonth,
-      minutesRemaining: Math.max(0, limits.minutesPerMonth - usage.monthlyAudioMinutesUsed),
+      minutesLimit: totalMinutesAvailable, // Now includes subscription + purchased credits
+      minutesRemaining: Math.max(0, totalMinutesAvailable - usage.monthlyAudioMinutesUsed),
       
       // Cumulative stats (never decrease)
       filesUploaded: usage.totalFilesUploaded,

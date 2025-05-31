@@ -209,6 +209,54 @@ export default function HomePage() {
   const router = useRouter()
   const [openFaq, setOpenFaq] = useState<number | null>(null)
   const [isScrolling, setIsScrolling] = useState(false)
+  const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly')
+
+  // Yearly pricing calculations
+  const getYearlyPrice = (monthlyPrice: number) => {
+    if (monthlyPrice === 0) return 0
+    // Use actual Stripe yearly pricing
+    switch (monthlyPrice) {
+      case 9: return 60  // Creator: $60/year (save $48)
+      case 19: return 180 // Studio: $180/year (save $48)
+      default: return Math.round(monthlyPrice * 12 * 0.833) // Fallback
+    }
+  }
+
+  const getDisplayPrice = (monthlyPrice: number, period: 'monthly' | 'yearly') => {
+    if (monthlyPrice === 0) return { price: 0, period: '', savings: 0 }
+    
+    if (period === 'monthly') {
+      return { 
+        price: monthlyPrice, 
+        period: '/month',
+        savings: 0
+      }
+    } else {
+      const yearlyPrice = getYearlyPrice(monthlyPrice)
+      const monthlySavings = (monthlyPrice * 12) - yearlyPrice
+      return { 
+        price: yearlyPrice, 
+        period: '/year',
+        savings: monthlySavings
+      }
+    }
+  }
+
+  const formatPrice = (priceData: { price: number, period: string, savings: number }) => {
+    if (priceData.price === 0) return '$0'
+    return (
+      <div className="text-center">
+        <div className="text-3xl font-bold mt-4 font-mono text-foreground">
+          ${priceData.price}{priceData.period}
+        </div>
+        {priceData.savings > 0 && (
+          <div className="text-xs text-green-600 font-medium mt-1">
+            Save ${priceData.savings}/year
+          </div>
+        )}
+      </div>
+    )
+  }
 
   // Redirect authenticated users to dashboard
   useEffect(() => {
@@ -664,7 +712,36 @@ export default function HomePage() {
           <div className="max-w-6xl mx-auto">
             <div className="text-center mb-16">
               <h2 className="text-3xl font-heading font-bold mb-4 text-foreground">Simple, Transparent Pricing</h2>
-              <p className="text-gray-600 dark:text-gray-300 text-lg mb-12 font-sans">Start free, upgrade when you need more stems and processing time</p>
+              <p className="text-gray-600 dark:text-gray-300 text-lg mb-8 font-sans">Start free, upgrade when you need more stems and processing time</p>
+              
+              {/* Billing Period Toggle */}
+              <div className="flex justify-center mb-8">
+                <div className="inline-flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+                  <button
+                    onClick={() => setBillingPeriod('monthly')}
+                    className={`px-6 py-3 text-sm font-medium rounded-md transition-all ${
+                      billingPeriod === 'monthly'
+                        ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
+                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
+                    }`}
+                  >
+                    Monthly
+                  </button>
+                  <button
+                    onClick={() => setBillingPeriod('yearly')}
+                    className={`px-6 py-3 text-sm font-medium rounded-md transition-all relative ${
+                      billingPeriod === 'yearly'
+                        ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
+                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
+                    }`}
+                  >
+                    Yearly
+                    <span className="absolute -top-1 -right-1 bg-green-500 text-white text-xs px-2 py-0.5 rounded-full font-bold">
+                      Save $48
+                    </span>
+                  </button>
+                </div>
+              </div>
             </div>
             
             <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
@@ -712,10 +789,15 @@ export default function HomePage() {
                 <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
                   <span className="bg-accent text-white px-4 py-1 rounded-full text-sm font-medium shadow-lg font-sans group-hover:shadow-xl transition-shadow duration-500 ease-out">Popular</span>
                 </div>
+                {billingPeriod === 'yearly' && (
+                  <div className="absolute -top-3 right-3">
+                    <span className="bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold">Best Value</span>
+                  </div>
+                )}
                 <CardHeader className="text-center">
                   <CardTitle className="font-heading text-lg text-foreground">Creator</CardTitle>
                   <CardDescription className="font-sans text-muted-foreground">For regular users</CardDescription>
-                  <div className="text-3xl font-bold mt-4 text-accent font-mono">$9</div>
+                  {formatPrice(getDisplayPrice(9, billingPeriod))}
                   <div className="text-sm text-gray-600 dark:text-gray-300 font-sans">60 minutes/month</div>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -754,7 +836,7 @@ export default function HomePage() {
                 <CardHeader className="text-center">
                   <CardTitle className="font-heading text-lg text-foreground">Studio</CardTitle>
                   <CardDescription className="font-sans text-muted-foreground">High volume processing</CardDescription>
-                  <div className="text-3xl font-bold mt-4 font-mono text-foreground">$19</div>
+                  {formatPrice(getDisplayPrice(19, billingPeriod))}
                   <div className="text-sm text-gray-600 dark:text-gray-300 font-sans">200 minutes/month</div>
                 </CardHeader>
                 <CardContent className="space-y-4">

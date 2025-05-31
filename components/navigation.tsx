@@ -27,8 +27,6 @@ export function Navigation() {
 
   const navItems = [
     { href: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
-    { href: '/separations', label: 'Separations', icon: 'music' },
-    { href: '/analytics', label: 'Analytics', icon: 'chart' },
   ]
 
   const getIcon = (iconName: string) => {
@@ -73,45 +71,12 @@ export function Navigation() {
               <h1 className="text-lg font-heading font-bold">Stemify</h1>
             </Link>
 
-            {/* Navigation Items (for authenticated users) */}
-            {user && (
-              <nav className="hidden md:flex items-center space-x-1">
-                {navItems.map((item) => {
-                  const isActive = pathname === item.href
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={`flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-                        isActive
-                          ? 'bg-accent text-white shadow-sm'
-                          : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-gray-800/50'
-                      }`}
-                    >
-                      {getIcon(item.icon)}
-                      <span>{item.label}</span>
-                    </Link>
-                  )
-                })}
-              </nav>
-            )}
-
             {/* Right Side Actions */}
             <div className="flex items-center space-x-3">
               <ThemeToggle />
               
               {user ? (
                 <>
-                  {/* Dashboard Button for authenticated users */}
-                  <Button 
-                    asChild
-                    variant="outline"
-                    size="sm"
-                    className="rounded-full bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200"
-                  >
-                    <Link href="/dashboard">Dashboard</Link>
-                  </Button>
-                  
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" className="relative h-8 w-8 rounded-full hover:bg-white/50 dark:hover:bg-gray-800/50">
@@ -165,29 +130,6 @@ export function Navigation() {
               )}
             </div>
           </div>
-
-          {/* Mobile Navigation */}
-          {user && (
-            <nav className="md:hidden mt-3 pt-3 border-t border-white/20 dark:border-gray-700/20 flex items-center space-x-1 overflow-x-auto">
-              {navItems.map((item) => {
-                const isActive = pathname === item.href
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all duration-200 ${
-                      isActive
-                        ? 'bg-accent text-white shadow-sm'
-                        : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-gray-800/50'
-                    }`}
-                  >
-                    {getIcon(item.icon)}
-                    <span>{item.label}</span>
-                  </Link>
-                )
-              })}
-            </nav>
-          )}
         </div>
       </header>
     </div>
