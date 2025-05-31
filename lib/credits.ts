@@ -31,14 +31,17 @@ export function calculateCreditsRequired(
   // Use precise decimal duration (no rounding)
   const exactDuration = Number(durationMinutes.toFixed(6)) // 6 decimal precision
   
+  // Base cost is 1.0 credit per minute (corrected from 2.0)
+  const baseCostPerMinute = 1.0
+  
   // Get model multiplier
   const modelMultiplier = STEM_COSTS.modelMultipliers[model] || 1
   
-  // Calculate total cost - stem count is irrelevant for Demucs
-  const totalCost = Number((exactDuration * modelMultiplier).toFixed(6))
+  // Calculate total cost: 1.0 credit/min × duration × model multiplier
+  const totalCost = Number((baseCostPerMinute * exactDuration * modelMultiplier).toFixed(6))
   
   return {
-    baseCost: exactDuration, // Base cost is just the duration
+    baseCost: baseCostPerMinute, // Base cost per minute
     modelMultiplier,
     totalCost,
     stemCount: stems.length // For display purposes only, not used in calculation

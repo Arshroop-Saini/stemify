@@ -203,9 +203,13 @@ export async function POST(request: NextRequest) {
 
       const pythonResult = await pythonResponse.json()
       console.log('Python API response:', pythonResult)
+      console.log('Python result status:', pythonResult.status)
+      console.log('Python result output_files exists:', !!pythonResult.output_files)
+      console.log('Python result output_files length:', pythonResult.output_files?.length || 0)
 
       // Check if we got completed results synchronously
       if (pythonResult.status === 'completed' && pythonResult.output_files) {
+        console.log('✅ SYNCHRONOUS COMPLETION DETECTED - Processing results immediately')
         console.log('Received completed separation results from Python API')
         
         // Process the output files into our result format
@@ -229,9 +233,19 @@ export async function POST(request: NextRequest) {
           quality === 'pro' ? 'htdemucs_ft' : 'htdemucs'
         )
         
+        // Round credits to 2 decimal places for database storage
+        const creditsToUse = Math.round(creditsCalculation.totalCost * 100) / 100
+        
+        console.log('Credits calculation:', {
+          baseCost: creditsCalculation.baseCost,
+          modelMultiplier: creditsCalculation.modelMultiplier,
+          totalCost: creditsCalculation.totalCost,
+          roundedCredits: creditsToUse
+        })
+        
         const creditResult = await deductCredits(
           user.id,
-          creditsCalculation.totalCost,
+          creditsToUse,
           separationJob.id,
           `Audio separation: ${selectedStems.length} stems, ${preciseDurationMinutes} min`,
           supabase
@@ -240,16 +254,34 @@ export async function POST(request: NextRequest) {
         console.log('Credit deduction result:', creditResult)
         
         // Update job to completed status
-        await supabase
+        console.log('UPDATING DATABASE: Preparing to update job to completed status')
+        console.log('Job ID:', separationJob.id)
+        console.log('Result files to save:', JSON.stringify(resultFiles, null, 2))
+        console.log('Credits to save:', creditsToUse)
+        
+        const updateData = {
+          status: 'completed',
+          progress: 100,
+          result_files: resultFiles,
+          credits_used: creditsToUse,
+          completed_at: new Date().toISOString()
+        }
+        console.log('Update data object:', JSON.stringify(updateData, null, 2))
+        
+        const { data: updateResult, error: updateError } = await supabase
           .from('separation_jobs')
-          .update({ 
-            status: 'completed',
-            progress: 100,
-            result_files: resultFiles,
-            credits_used: creditsCalculation.totalCost,
-            completed_at: new Date().toISOString()
-          })
+          .update(updateData)
           .eq('id', separationJob.id)
+          .select()
+
+        if (updateError) {
+          console.error('DATABASE UPDATE FAILED:', updateError)
+          console.error('Update error details:', JSON.stringify(updateError, null, 2))
+          throw new Error(`Failed to update job status: ${updateError.message}`)
+        }
+        
+        console.log('DATABASE UPDATE SUCCESS:', updateResult)
+        console.log('Updated job data:', JSON.stringify(updateResult, null, 2))
 
         // Record usage in cumulative tracking system
         try {

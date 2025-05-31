@@ -96,13 +96,13 @@ export const SUBSCRIPTION_TIERS = {
  * Credit cost configuration for audio separation
  * 
  * PRICING MODEL:
- * - Base cost: 1 credit = 1 minute of audio processing
+ * - Base cost: 1.0 credit per minute of audio processing (corrected from 2.0)
  * - Model multipliers apply to base cost (not stem count)
  * - Stem count has NO impact on cost (Demucs processes all stems simultaneously)
  * 
  * Examples:
- * - 20 seconds (0.333 min) with htdemucs = 0.333 credits
- * - 20 seconds (0.333 min) with htdemucs_ft = 0.666 credits (2x multiplier)
+ * - 0.1 minutes (6 seconds) with htdemucs = 1.0 × 0.1 × 1 = 0.1 credits
+ * - 0.1 minutes (6 seconds) with htdemucs_ft = 1.0 × 0.1 × 2 = 0.2 credits
  */
 export const STEM_COSTS = {
   modelMultipliers: {

@@ -476,7 +476,7 @@ export function SeparationInterface({ selectedFile, className, onSeparationCompl
               onValueChange={(value: string) => setQuality(value as 'standard' | 'pro')}
               className="space-y-3"
             >
-              <div className="flex items-center space-x-3 p-4 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-800">
+              <div className="flex items-center space-x-3 p-4 rounded-lg border hover:bg-surface-light/50 dark:hover:bg-surface-dark/50">
                 <RadioGroupItem value="standard" id="standard" />
                 <Label htmlFor="standard" className="flex-1 cursor-pointer">
                   <div className="flex items-center justify-between">
@@ -491,10 +491,12 @@ export function SeparationInterface({ selectedFile, className, onSeparationCompl
                 </Label>
               </div>
               
-              <div className={cn(
-                "flex items-center space-x-3 p-4 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-800",
-                !canUsePremiumFeature('creator') && "opacity-50"
-              )}>
+              <div
+                className={cn(
+                  "flex items-center space-x-3 p-4 rounded-lg border hover:bg-surface-light/50 dark:hover:bg-surface-dark/50",
+                  !canUsePremiumFeature('creator') && "opacity-50"
+                )}
+              >
                 <RadioGroupItem
                   value="pro"
                   id="pro"
@@ -523,7 +525,7 @@ export function SeparationInterface({ selectedFile, className, onSeparationCompl
           </div>
 
           {/* Processing Estimate */}
-          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+          <div className="bg-surface-light dark:bg-surface-dark rounded-lg p-4">
             <div className="flex items-center justify-between mb-3">
               <h4 className="font-medium flex items-center gap-2">
                 <Clock className="w-4 h-4" />

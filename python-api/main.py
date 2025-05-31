@@ -103,6 +103,39 @@ async def upload_file_to_supabase(file_path: str, stem_name: str, user_id: str) 
         logger.error(f"Error uploading {stem_name}: {str(e)}")
         return None
 
+def filter_output_to_selection(output_files: List[Dict], selected_stems: List[str]) -> List[Dict]:
+    """
+    Filter output files to only include stems that the user actually selected.
+    This prevents returning unwanted stems like 'no_vocals' when user only wants 'vocals'.
+    """
+    if not selected_stems:
+        logger.info("No stem selection provided - returning all output files")
+        return output_files  # No filtering if no specific selection
+    
+    logger.info(f"=== FILTERING OUTPUT FILES ===")
+    logger.info(f"Input files: {len(output_files)}")
+    logger.info(f"User selected stems: {selected_stems}")
+    
+    for i, file in enumerate(output_files):
+        logger.info(f"File {i}: stem_name='{file.get('stem_name', 'MISSING')}', url={file.get('url', 'NO_URL')}")
+    
+    filtered_files = []
+    
+    for file in output_files:
+        stem_name = file.get("stem_name", "")
+        if stem_name in selected_stems:
+            filtered_files.append(file)
+            logger.info(f"✅ INCLUDING: {stem_name} (matches user selection)")
+        else:
+            logger.info(f"❌ EXCLUDING: {stem_name} (not in user selection)")
+    
+    logger.info(f"=== FILTERING RESULT ===")
+    logger.info(f"Returned {len(filtered_files)} files from {len(output_files)} total")
+    for i, file in enumerate(filtered_files):
+        logger.info(f"Final file {i}: {file.get('stem_name')}")
+    
+    return filtered_files
+
 @app.get("/")
 async def root():
     return {"message": "Stemify Sieve API is running", "version": "1.0.0"}
@@ -138,17 +171,33 @@ async def separate_audio(request: SeparationRequest):
         model = request.model
         two_stems = request.two_stems
         
-        # If specific stems are selected and it's just one, use two_stems mode
-        if request.selected_stems and len(request.selected_stems) == 1:
-            stem = request.selected_stems[0]
-            if stem in ["vocals", "drums", "bass", "other", "guitar", "piano"]:
-                two_stems = stem
-                logger.info(f"Using two_stems mode for: {stem}")
+        # Smart two_stems optimization based on user selection
+        if request.selected_stems:
+            selected_count = len(request.selected_stems)
+            logger.info(f"User selected {selected_count} stems: {request.selected_stems}")
+            
+            if selected_count == 1:
+                # Single stem selection - use two_stems mode for efficiency
+                stem = request.selected_stems[0]
+                if stem in ["vocals", "drums", "bass", "other", "guitar", "piano"]:
+                    two_stems = stem
+                    logger.info(f"🎯 OPTIMIZATION: Using two_stems='{stem}' (generates 2 files instead of 4+)")
+                else:
+                    logger.warning(f"Invalid stem '{stem}' for two_stems mode, falling back to full separation")
+                    two_stems = "None"
+            else:
+                # Multiple stems - must use full separation
+                two_stems = "None"
+                logger.info(f"📊 MULTIPLE STEMS: Using two_stems='None' (generates all stems, will filter to {selected_count})")
+        else:
+            # No selection specified - generate all stems
+            two_stems = "None"
+            logger.info("🔄 NO SELECTION: Using two_stems='None' (generates all available stems)")
         
         # Use 6-stem model if guitar or piano is requested
         if request.selected_stems and ("guitar" in request.selected_stems or "piano" in request.selected_stems):
             model = "htdemucs_6s"
-            logger.info("Using htdemucs_6s model for guitar/piano separation")
+            logger.info("🎸 ENHANCED MODEL: Using htdemucs_6s for guitar/piano separation")
         
         # Quality-based configuration
         if request.quality == "pro":
@@ -224,10 +273,13 @@ async def separate_audio(request: SeparationRequest):
             except Exception as e:
                 logger.warning(f"Failed to clean up {file_path}: {e}")
         
+        # Filter output to selected stems
+        filtered_output_files = filter_output_to_selection(output_files, request.selected_stems)
+        
         return {
             "status": "completed",
             "message": "Separation completed successfully",
-            "output_files": output_files,
+            "output_files": filtered_output_files,
             "parameters": {
                 "model": model,
                 "two_stems": two_stems,
