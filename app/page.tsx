@@ -78,14 +78,14 @@ function AudioStem({
   }
 
   return (
-    <div className="bg-white/80 dark:bg-gray-50/80 backdrop-blur-sm rounded-2xl p-5 shadow-sm border border-gray-200/30 dark:border-gray-300/30">
+    <div className="bg-background/80 dark:bg-background/80 backdrop-blur-sm rounded-2xl p-5 shadow-sm border border-gray-200/30 dark:border-gray-700/30">
       <div className="flex items-center justify-between">
         <div className="flex items-center flex-1">
           <div className={`w-12 h-12 ${bgColor} rounded-xl flex items-center justify-center mr-4 border`}>
             {icon}
           </div>
           <div className="flex-1">
-            <h4 className="font-heading font-bold text-gray-900 dark:text-gray-800 text-lg mb-2">{title}</h4>
+            <h4 className="font-heading font-bold text-foreground text-lg mb-2">{title}</h4>
             {/* Real Waveform */}
             <div 
               ref={waveformRef} 
@@ -403,13 +403,13 @@ export default function HomePage() {
             </div>
             
             {/* Audio Separation Demo */}
-            <div className="bg-gradient-to-br from-gray-50 to-white dark:from-gray-100 dark:to-gray-50 rounded-3xl shadow-sm border border-gray-100/50 dark:border-gray-200/50 overflow-hidden">
+            <div className="bg-surface-light dark:bg-surface-dark rounded-3xl shadow-sm border border-gray-200/50 dark:border-gray-700/50 overflow-hidden">
               {/* Demo Container - Integrated Responsive Layout */}
               <div className="relative px-6 md:px-12 py-12 md:py-20 min-h-[500px] md:min-h-[600px]">
                 
                 {/* Left Side - Main Track */}
                 <div className="absolute left-6 md:left-12 top-1/2 transform -translate-y-1/2 w-80 md:w-96 z-20">
-                  <div className="bg-white/80 dark:bg-gray-50/80 backdrop-blur-sm rounded-2xl p-6 md:p-8 shadow-sm border border-gray-200/30 dark:border-gray-300/30">
+                  <div className="bg-background/80 dark:bg-background/80 backdrop-blur-sm rounded-2xl p-6 md:p-8 shadow-sm border border-gray-200/30 dark:border-gray-700/30">
                     <div className="flex items-start mb-6">
                       <div className="w-16 h-16 bg-accent/10 rounded-2xl flex items-center justify-center mr-5 border border-accent/15">
                         <svg className="w-8 h-8 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5">
@@ -417,8 +417,8 @@ export default function HomePage() {
                         </svg>
                       </div>
                       <div className="flex-1">
-                        <h3 className="font-heading font-bold text-gray-900 dark:text-gray-800 text-xl mb-2">Full Track</h3>
-                        <p className="text-gray-500 dark:text-gray-600 font-sans text-sm mb-4">Complete audio with all stems</p>
+                        <h3 className="font-heading font-bold text-foreground text-xl mb-2">Full Track</h3>
+                        <p className="text-muted-foreground font-sans text-sm mb-4">Complete audio with all stems</p>
                         
                         {/* Main Track Audio Component */}
                         <MainAudioTrack />
@@ -429,7 +429,7 @@ export default function HomePage() {
 
                 {/* Center - Processing Indicator */}
                 <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 z-30">
-                  <div className="w-20 h-20 bg-white/80 dark:bg-gray-50/80 backdrop-blur-sm rounded-full shadow-sm border border-gray-200/30 dark:border-gray-300/30 flex items-center justify-center">
+                  <div className="w-20 h-20 bg-background/80 dark:bg-background/80 backdrop-blur-sm rounded-full shadow-sm border border-gray-200/30 dark:border-gray-700/30 flex items-center justify-center">
                     <div className="w-8 h-8 animate-spin">
                       <svg className="w-8 h-8 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z"/>
@@ -623,8 +623,8 @@ export default function HomePage() {
               </div>
               
               {/* Bottom Description */}
-              <div className="bg-gray-50/30 dark:bg-gray-100/30 px-8 py-6 border-t border-gray-200/30 dark:border-gray-300/30 text-center">
-                <p className="text-gray-600 dark:text-gray-700 font-sans text-base mb-2">
+              <div className="bg-surface-light/30 dark:bg-surface-dark/30 px-8 py-6 border-t border-gray-200/30 dark:border-gray-700/30 text-center">
+                <p className="text-muted-foreground font-sans text-base mb-2">
                   Separate audio tracks into individual stems, and isolate them into any instrument.
                 </p>
               </div>
