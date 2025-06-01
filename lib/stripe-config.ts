@@ -36,6 +36,7 @@ export const STRIPE_SUBSCRIPTION_PRICES = {
 export const STRIPE_CONFIG = {
   successUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard?success=true`,
   cancelUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard?canceled=true`,
+  portalReturnUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/settings`,
 }
 
 // Helper function to get credit package info (safe for client-side)
