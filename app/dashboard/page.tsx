@@ -12,7 +12,6 @@ import { useCredits } from '@/hooks/use-credits'
 import type { UploadResult } from '@/lib/supabase-storage'
 import { AudioPreview } from '@/components/audio-preview'
 import { SeparationInterface } from '@/components/separation-interface'
-import { SeparationResults } from '@/components/separation-results'
 import { getUserStats, getTierDisplayName, type UserStats } from '@/lib/user-stats'
 import { Clock, Music, Sparkles, Crown, Play, Coins, Settings } from 'lucide-react'
 import Link from 'next/link'
@@ -209,15 +208,15 @@ export default function DashboardPage() {
             </Card>
           </div>
 
-          {/* Main Content - Improved 2x2 Grid Layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Top Left - File Upload (Most Important Action) */}
-            <div className="order-1">
-              <FileUpload onUploadComplete={handleUploadComplete} />
-            </div>
+          {/* File Upload Section */}
+          <div className="mb-6">
+            <FileUpload onUploadComplete={handleUploadComplete} />
+          </div>
 
-            {/* Top Right - File Library */}
-            <div className="order-2">
+          {/* Your Audio Files and Audio Preview Side by Side */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            {/* Left - File Library */}
+            <div>
               <FileLibrary 
                 onFileSelect={handleFileSelected}
                 refreshTrigger={refreshTrigger}
@@ -226,20 +225,10 @@ export default function DashboardPage() {
               />
             </div>
 
-            {/* Bottom Left - Audio Preview */}
-            <div className="order-3">
+            {/* Right - Audio Preview */}
+            <div>
               {selectedFile ? (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Play className="w-5 h-5 text-accent" />
-                      Audio Preview
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <AudioPreview file={selectedFile} />
-                  </CardContent>
-                </Card>
+                <AudioPreview file={selectedFile} />
               ) : (
                 <Card className="h-full flex items-center justify-center border-dashed border-gray-300 dark:border-gray-600">
                   <CardContent className="text-center py-12">
@@ -254,19 +243,14 @@ export default function DashboardPage() {
                 </Card>
               )}
             </div>
-
-            {/* Bottom Right - Separation Interface */}
-            <div className="order-4">
-              <SeparationInterface
-                selectedFile={selectedFile}
-                onSeparationComplete={handleSeparationComplete}
-              />
-            </div>
           </div>
 
-          {/* Separation Results History */}
-          <div className="mt-8">
-            <SeparationResults />
+          {/* Separation Interface */}
+          <div className="mb-6">
+            <SeparationInterface
+              selectedFile={selectedFile}
+              onSeparationComplete={handleSeparationComplete}
+            />
           </div>
         </div>
       </div>

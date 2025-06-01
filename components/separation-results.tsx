@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { Download, Play, Pause, Calendar, Clock, Music, ChevronDown, ChevronRight, Trash2, MoreVertical, Volume2, RefreshCw, X } from 'lucide-react'
+import { Download, Play, Pause, Calendar, Clock, Music, ChevronDown, ChevronRight, Trash2, MoreVertical, Volume2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import WaveSurfer from 'wavesurfer.js'
 
@@ -569,27 +569,27 @@ function MainTrackPlayer({ jobId, audioFileId, trackName }: { jobId: string; aud
   }
 
   return (
-    <div className="border rounded-lg p-3 bg-surface-light dark:bg-surface-dark shadow-sm">
-      <div className="flex items-center justify-between mb-3">
+    <div className="border rounded-lg p-2 bg-surface-light dark:bg-surface-dark shadow-sm">
+      <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-accent"></div>
-          <span className="font-medium text-sm">{trackName}</span>
+          <div className="w-2 h-2 rounded-full bg-accent"></div>
+          <span className="font-medium text-xs truncate">{trackName}</span>
           {error && (
-            <span className="text-xs text-red-500" title={error}>⚠️ Error</span>
+            <span className="text-xs text-red-500" title={error}>⚠️</span>
           )}
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center">
           <Button
             variant="ghost"
             size="sm"
             onClick={togglePlayPause}
             disabled={isLoading || !!error || !audioUrl}
-            className="h-8 w-8 p-0 text-accent hover:text-accent/80"
+            className="h-6 w-6 p-0 text-accent hover:text-accent/80"
           >
             {isPlaying ? (
-              <Pause className="w-4 h-4" />
+              <Pause className="w-3 h-3" />
             ) : (
-              <Play className="w-4 h-4" />
+              <Play className="w-3 h-3" />
             )}
           </Button>
         </div>
@@ -600,14 +600,14 @@ function MainTrackPlayer({ jobId, audioFileId, trackName }: { jobId: string; aud
           <span className="text-xs text-red-600 dark:text-red-400 text-center truncate" title={error}>{error}</span>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-1">
           <div 
             ref={waveformRef} 
-            className="cursor-pointer min-h-[40px] rounded"
+            className="cursor-pointer min-h-[30px] rounded"
           />
           <div className="flex justify-between items-center text-xs text-gray-500">
             <span>{formatTime(currentTime)}</span>
-            {isLoading && <span className="text-gray-400">Loading audio...</span>}
+            {isLoading && <span className="text-gray-400">Loading...</span>}
             <span>{formatTime(duration)}</span>
           </div>
         </div>
@@ -664,11 +664,8 @@ export function SeparationResults() {
 
     setMonthGroups(sortedGroups)
 
-    // Auto-open current month
-    if (sortedGroups.length > 0) {
-      const currentMonth = `${sortedGroups[0].year}-${sortedGroups[0].month}`
-      setOpenMonths(new Set([currentMonth]))
-    }
+    // Start with all months collapsed
+    setOpenMonths(new Set())
   }
 
   const fetchSeparationHistory = async () => {
@@ -732,73 +729,6 @@ export function SeparationResults() {
       toast.error('Failed to load separation history')
     } finally {
       setLoading(false)
-    }
-  }
-
-  const refreshJobStatuses = async () => {
-    if (!user) return
-
-    try {
-      const supabase = createClient()
-      
-      // Get current session for auth token
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session?.access_token) {
-        toast.error('Authentication required')
-        return
-      }
-      
-      // Find all pending jobs and check if they should be completed
-      const pendingJobs = jobs.filter(job => job.status === 'pending')
-      
-      if (pendingJobs.length === 0) {
-        toast.info('No pending jobs to refresh')
-        return
-      }
-
-      console.log(`Checking ${pendingJobs.length} pending jobs for completion...`)
-      
-      // Check each pending job for completion
-      for (const job of pendingJobs) {
-        try {
-          // Call our separation API to check status with proper auth
-          const response = await fetch(`/api/separate?jobId=${job.id}`, {
-            headers: {
-              'Authorization': `Bearer ${session.access_token}`
-            }
-          })
-          
-          if (response.ok) {
-            const jobStatus = await response.json()
-            console.log(`Job ${job.id} status check:`, jobStatus)
-            
-            // If job is actually completed, update it in the database
-            if (jobStatus.status === 'completed' && jobStatus.resultFiles) {
-              await supabase
-                .from('separation_jobs')
-                .update({
-                  status: 'completed',
-                  progress: 100,
-                  result_files: jobStatus.resultFiles,
-                  completed_at: new Date().toISOString()
-                })
-                .eq('id', job.id)
-                
-              console.log(`Updated job ${job.id} to completed status`)
-            }
-          }
-        } catch (error) {
-          console.error(`Error checking job ${job.id}:`, error)
-        }
-      }
-      
-      // Refresh the data
-      await fetchSeparationHistory()
-      toast.success('Job statuses refreshed!')
-      
-    } catch (error) {
-      console.error('Error refreshing job statuses:', error)
-      toast.error('Failed to refresh job statuses')
     }
   }
 
@@ -1019,15 +949,6 @@ export function SeparationResults() {
         <CardTitle className="flex items-center gap-2">
           <Clock className="w-5 h-5" />
           Separation History
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={refreshJobStatuses}
-            className="ml-2 h-7 w-7 p-0"
-            title="Refresh job statuses"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </Button>
           <Badge variant="secondary" className="ml-auto">
             {jobs.length} total
           </Badge>
@@ -1069,7 +990,7 @@ export function SeparationResults() {
                   </CollapsibleTrigger>
                   
                   <CollapsibleContent className="mt-2">
-                    <div className="space-y-3 pl-6">
+                    <div className="space-y-2 pl-4">
                       {group.jobs.map((job) => {
                         const isJobExpanded = expandedJobs.has(job.id)
                         
@@ -1079,31 +1000,31 @@ export function SeparationResults() {
                             className="bg-surface-light dark:bg-surface-dark cursor-pointer hover:bg-surface-light/80 dark:hover:bg-surface-dark/80 transition-colors"
                             onClick={() => openJobModal(job)}
                           >
-                            <CardContent className="p-4 space-y-4">
+                            <CardContent className="p-3 space-y-2">
                               {/* Job Header */}
                               <div className="flex items-start justify-between">
-                                <div className="flex-1">
-                                  <h4 className="font-medium text-gray-900 dark:text-gray-100">
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="font-medium text-gray-900 dark:text-gray-100 text-sm truncate">
                                     {job.audio_files?.original_name || 'Unknown file'}
                                   </h4>
-                                  <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                  <div className="flex items-center gap-3 text-xs text-gray-600 dark:text-gray-400 mt-1 flex-wrap">
                                     <span className="flex items-center gap-1">
                                       <Calendar className="w-3 h-3" />
                                       {formatDate(job.created_at)}
                                     </span>
                                     <span>{job.selected_stems.length} stems</span>
-                                    <span className="capitalize">{job.quality} quality</span>
+                                    <span className="capitalize">{job.quality}</span>
                                     {job.audio_files?.duration && (
                                       <span>{formatDuration(job.audio_files.duration)}</span>
                                     )}
-                                    <span>{job.credits_used.toFixed(2)} credits</span>
+                                    <span>{job.credits_used.toFixed(1)}c</span>
                                   </div>
                                 </div>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center">
                                   <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
-                                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={(e) => e.stopPropagation()}>
-                                        <MoreVertical className="w-4 h-4" />
+                                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={(e) => e.stopPropagation()}>
+                                        <MoreVertical className="w-3 h-3" />
                                       </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
@@ -1147,9 +1068,9 @@ export function SeparationResults() {
 
                               {/* Original Track Preview */}
                               {job.status === 'completed' && (
-                                <div className="pt-4" onClick={(e) => e.stopPropagation()}>
-                                  <div className="mb-2">
-                                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Original Track</span>
+                                <div className="pt-2" onClick={(e) => e.stopPropagation()}>
+                                  <div className="mb-1">
+                                    <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Original Track</span>
                                   </div>
                                   <MainTrackPlayer 
                                     jobId={job.id}
