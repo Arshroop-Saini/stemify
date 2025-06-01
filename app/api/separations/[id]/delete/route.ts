@@ -17,9 +17,10 @@ const createServiceRoleClient = () => {
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const params = await context.params
     const jobId = params.id
     console.log('=== SERVER-SIDE SEPARATION DELETION ===')
     console.log('Job ID:', jobId)
