@@ -86,16 +86,6 @@ function AudioStem({
           </div>
           <div className="flex-1">
             <h4 className="font-heading font-bold text-gray-900 dark:text-gray-800 text-lg mb-2">{title}</h4>
-            {/* Progress Bar Controller */}
-            <div className="w-full h-1 bg-gray-200/60 dark:bg-gray-300/60 rounded-full mb-2 cursor-pointer relative">
-              <div 
-                className={`h-full rounded-full transition-all duration-100`}
-                style={{ 
-                  width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%`,
-                  backgroundColor: color
-                }}
-              ></div>
-            </div>
             {/* Real Waveform */}
             <div 
               ref={waveformRef} 
@@ -178,30 +168,30 @@ function MainAudioTrack() {
     }
   }
 
-  const formatTime = (time: number) => {
-    const minutes = Math.floor(time / 60)
-    const seconds = Math.floor(time % 60)
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`
-  }
-
   return (
-    <div>
-      {/* Progress Bar Controller */}
-      <div className="w-full h-2 bg-gray-200/60 dark:bg-gray-300/60 rounded-full mb-4 cursor-pointer relative">
-        <div 
-          className="h-full bg-accent rounded-full transition-all duration-100"
-          style={{ 
-            width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%`
-          }}
-        ></div>
-      </div>
-      
-      {/* Real Waveform */}
+    <div className="flex items-center w-full"> {/* Flex container for waveform and button */}
+      {/* Real Waveform (takes up remaining space) */}
       <div 
         ref={waveformRef} 
-        className="cursor-pointer"
+        className="cursor-pointer flex-grow" // flex-grow to take available space, removed mb-3
         onClick={handleSeek}
       ></div>
+
+      {/* Play/Pause Button for Main Track (to the right) */}
+      <button 
+        onClick={togglePlayPause}
+        className={`w-10 h-10 bg-accent/10 hover:bg-accent/20 rounded-xl flex items-center justify-center transition-colors border border-accent/20 ml-3 flex-shrink-0`}
+      >
+        {isPlaying ? (
+          <svg className="w-5 h-5 text-accent" fill="currentColor" viewBox="0 0 24 24"> {/* Smaller icon */}
+            <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
+          </svg>
+        ) : (
+          <svg className="w-5 h-5 text-accent ml-0.5" fill="currentColor" viewBox="0 0 24 24"> {/* Smaller icon */}
+            <path d="M8 5v14l11-7z"/>
+          </svg>
+        )}
+      </button>
     </div>
   )
 }
@@ -318,7 +308,7 @@ export default function HomePage() {
     },
     {
       question: "How accurate is the AI separation?",
-      answer: "Our HT-Demucs AI model achieves industry-leading separation quality. Results vary by song complexity, but most users are amazed by the clarity of separated stems."
+      answer: "Our SOTA(State of the Art) AI model achieves industry-leading separation quality. Results vary by song complexity, but most users are amazed by the clarity of separated stems."
     },
     {
       question: "Can I use separated stems commercially?",
@@ -508,101 +498,114 @@ export default function HomePage() {
 
                 {/* Connection Lines - Hub and spoke pattern with curved branches */}
                 <div className="absolute inset-0 pointer-events-none hidden md:block" style={{ zIndex: 15 }}>
-                  {/* Main straight line from Full Track to Center */}
-                  <div 
-                    className="absolute bg-accent h-0.5 rounded-full"
+                  {/* Main straight line from Full Track to Center - Replaced with SVG */}
+                  <div // Container for the straight SVG line
+                    className="absolute" // Basic positioning
                     style={{
-                      left: '32%', // Right edge of full track
-                      top: '50%',
-                      width: '18%', // Distance to center
-                      transform: 'translateY(-50%)'
-                    }}
-                  />
-                  
-                  {/* Curved branch to Vocals */}
-                  <div 
-                    className="absolute"
-                    style={{
-                      left: '50%', // From center
-                      top: '50%',
-                      width: 'calc(100% - 50% - 24px)', // Almost full width to reach stem cards
-                      height: '300px',
-                      transform: 'translate(0, -50%)'
+                      left: 'calc(48px + 384px)', // Start X of the SVG container
+                      top: '50%',                   // Top of the SVG container
+                      width: 'calc(50% - (48px + 384px))', // Width of the SVG container (length of line)
+                      height: '2px', // Increased height for thicker perceived line
+                      transform: 'translateY(-50%)'   // Vertically center the container
                     }}
                   >
-                    <svg className="w-full h-full">
-                      <path 
-                        d="M 0 150 Q 60 150 100 50" 
-                        stroke="#22C55E" 
-                        strokeWidth="2" 
+                    <svg className="w-full h-full" preserveAspectRatio="none" viewBox="0 0 100 2"> {/* viewBox height matches container height */}
+                      <path
+                        d="M 0 1 L 100 1" // Line drawn in the middle of the 2-unit high viewBox
+                        stroke="#22C55E"      // Accent color from design system
+                        strokeWidth="2"       // Stroke width now 2 units, matching viewBox height
                         fill="none"
-                        opacity="0.8"
+                        opacity="0.5"         // Consistent opacity with curved lines
                       />
                     </svg>
                   </div>
                   
-                  {/* Curved branch to Drums */}
+                  {/* SVG Container Height: 520px, Midpoint: 260px */}
+
+                  {/* Curved branch to Vocals - Target Y: 75px */}
+                  <div 
+                    className="absolute"
+                    style={{
+                      left: '50%', 
+                      top: '50%',   
+                      width: 'calc(50% - 368px)', 
+                      height: '520px', 
+                      transform: 'translate(0, -50%)' 
+                    }}
+                  >
+                    <svg className="w-full h-full" preserveAspectRatio="none" viewBox="0 0 100 520">
+                      <path 
+                        d="M 5 260 Q 52.5 195 100 65" // Inverted curve for Vocals
+                        stroke="#22C55E" 
+                        strokeWidth="1" 
+                        fill="none"
+                        opacity="0.5" 
+                      />
+                    </svg>
+                  </div>
+                  
+                  {/* Curved branch to Drums - Target Y: 200px */}
                   <div 
                     className="absolute"
                     style={{
                       left: '50%',
                       top: '50%',
-                      width: 'calc(100% - 50% - 24px)',
-                      height: '150px',
+                      width: 'calc(50% - 368px)', 
+                      height: '520px', 
                       transform: 'translate(0, -50%)'
                     }}
                   >
-                    <svg className="w-full h-full">
+                    <svg className="w-full h-full" preserveAspectRatio="none" viewBox="0 0 100 520">
                       <path 
-                        d="M 0 75 Q 60 75 100 60" 
+                        d="M 5 260 Q 52.5 250 100 200" // Inverted curve for Drums
                         stroke="#22C55E" 
-                        strokeWidth="2" 
+                        strokeWidth="1" 
                         fill="none"
-                        opacity="0.8"
+                        opacity="0.5" 
                       />
                     </svg>
                   </div>
                   
-                  {/* Curved branch to Bass */}
+                  {/* Curved branch to Bass - Target Y: 320px */}
                   <div 
                     className="absolute"
                     style={{
                       left: '50%',
                       top: '50%',
-                      width: 'calc(100% - 50% - 24px)',
-                      height: '150px',
+                      width: 'calc(50% - 368px)', 
+                      height: '520px', 
                       transform: 'translate(0, -50%)'
                     }}
                   >
-                    <svg className="w-full h-full">
+                    <svg className="w-full h-full" preserveAspectRatio="none" viewBox="0 0 100 520">
                       <path 
-                        d="M 0 75 Q 60 75 100 90" 
+                        d="M 5 260 Q 52.5 270 100 320" // Inverted curve for Bass
                         stroke="#22C55E" 
-                        strokeWidth="2" 
+                        strokeWidth="1" 
                         fill="none"
-                        opacity="0.8"
+                        opacity="0.5" 
                       />
                     </svg>
                   </div>
                   
-                  {/* Curved branch to Other */}
+                  {/* Curved branch to Other - Target Y: 445px */}
                   <div 
                     className="absolute"
                     style={{
                       left: '50%',
                       top: '50%',
-                      width: 'calc(100% - 50% - 24px)',
-                      height: '300px',
+                      width: 'calc(50% - 368px)', 
+                      height: '520px', 
                       transform: 'translate(0, -50%)'
                     }}
                   >
-                    <svg className="w-full h-full">
+                    <svg className="w-full h-full" preserveAspectRatio="none" viewBox="0 0 100 520">
                       <path 
-                        d="M 0 150 Q 60 150 100 250" 
+                        d="M 5 260 Q 52.5 325 100 445" // Correctly inverted curve for Other
                         stroke="#22C55E" 
-                        strokeWidth="2" 
+                        strokeWidth="1" 
                         fill="none"
-                        opacity="0.8"
+                        opacity="0.5" 
                       />
                     </svg>
                   </div>
@@ -611,7 +614,7 @@ export default function HomePage() {
                   <div 
                     className="absolute w-2 h-2 bg-accent rounded-full"
                     style={{
-                      left: '50%',
+                      left: '50%', 
                       top: '50%',
                       transform: 'translate(-50%, -50%)'
                     }}
@@ -693,7 +696,7 @@ export default function HomePage() {
                   </div>
                   <CardTitle className="font-heading text-xl text-foreground group-hover:text-accent transition-colors duration-500 ease-out">AI-Powered</CardTitle>
                   <CardDescription className="text-base font-sans text-muted-foreground">
-                    State-of-the-art HT-Demucs technology for highest quality results
+                    State-of-the-art AI models for highest quality results
                   </CardDescription>
                 </CardHeader>
               </Card>
@@ -1047,20 +1050,20 @@ export default function HomePage() {
                 <h3 className="text-xl font-heading font-semibold mb-6 text-foreground">Trusted by creators worldwide</h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-8 items-center opacity-60">
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-accent font-mono">10K+</div>
-                    <div className="text-sm text-muted-foreground font-sans">Songs Separated</div>
+                    <div className="text-2xl font-bold text-accent font-mono">SOTA</div>
+                    <div className="text-sm text-muted-foreground font-sans">AI Technology</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-accent font-mono">5K+</div>
-                    <div className="text-sm text-muted-foreground font-sans">Happy Users</div>
+                    <div className="text-2xl font-bold text-accent font-mono">Fast</div>
+                    <div className="text-sm text-muted-foreground font-sans">Performance</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-accent font-mono">99.9%</div>
-                    <div className="text-sm text-muted-foreground font-sans">Uptime</div>
+                    <div className="text-2xl font-bold text-accent font-mono">100%</div>
+                    <div className="text-sm text-muted-foreground font-sans">Platform Uptime</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-accent font-mono">4.9★</div>
-                    <div className="text-sm text-muted-foreground font-sans">User Rating</div>
+                    <div className="text-2xl font-bold text-accent font-mono">Studio Grade</div>
+                    <div className="text-sm text-muted-foreground font-sans">Output Quality</div>
                   </div>
                 </div>
               </div>

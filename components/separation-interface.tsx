@@ -9,9 +9,10 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { Loader2, Play, Pause, Download, Music, Clock, Sparkles, Mic, Drum, Guitar, Piano, Volume2, Zap, Crown, Timer, CreditCard, X, Calendar, Trash2, MoreVertical } from 'lucide-react'
+import { Loader2, Play, Pause, Download, Music, Clock, Sparkles, Mic, Drum, Guitar, Piano, Volume2, Zap, Crown, Timer, CreditCard, X, Calendar, Trash2, MoreVertical, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/components/auth-provider'
+import { useCredits } from '@/hooks/use-credits'
 import { SUBSCRIPTION_TIERS, SIEVE_CONFIG } from '@/lib/constants'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase'
@@ -704,6 +705,11 @@ export function SeparationInterface({ selectedFile, className, onSeparationCompl
     }
   }, [selectedFile, quality])
 
+  // Add credit validation
+  const { balance, loading: creditsLoading } = useCredits()
+  const estimate = calculateEstimate()
+  const hasInsufficientCredits = !creditsLoading && estimate.cost > 0 && balance < estimate.cost
+
   // Handle stem selection
   const handleStemToggle = useCallback((stemId: string) => {
     setSelectedStems(prev => {
@@ -959,7 +965,6 @@ export function SeparationInterface({ selectedFile, className, onSeparationCompl
     }
   }
 
-  const estimate = calculateEstimate()
   const tierConfig = SUBSCRIPTION_TIERS[userTier]
 
   return (
@@ -1165,18 +1170,40 @@ export function SeparationInterface({ selectedFile, className, onSeparationCompl
             )}
           </div>
 
+          {/* Insufficient Credits Warning */}
+          {hasInsufficientCredits && (
+            <div className="mt-4 p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+              <div className="flex items-center gap-3">
+                <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+                <div>
+                  <h4 className="font-medium text-red-700 dark:text-red-300">Insufficient Credits</h4>
+                  <p className="text-sm text-red-600 dark:text-red-400 mt-1">
+                    You need {estimate.cost.toFixed(1)} credits but only have {balance.toFixed(1)}. 
+                    Purchase additional credits to continue.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Start Button */}
           <Button
             onClick={handleStartSeparation}
             disabled={
               selectedStems.length === 0 || 
               isProcessing || 
+              hasInsufficientCredits ||
               (currentJob?.status === 'pending' || currentJob?.status === 'processing')
             }
             className="w-full"
             size="lg"
           >
-            {isProcessing || (currentJob?.status === 'processing') ? (
+            {hasInsufficientCredits ? (
+              <>
+                <CreditCard className="w-4 h-4 mr-2" />
+                Insufficient Credits ({estimate.cost.toFixed(1)} needed)
+              </>
+            ) : isProcessing || (currentJob?.status === 'processing') ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 Processing...
