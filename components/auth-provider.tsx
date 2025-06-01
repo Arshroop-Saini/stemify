@@ -50,14 +50,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(false)
         setError(null)
 
-        // Handle auth events
-        if (event === 'SIGNED_IN') {
-          // Check for redirect parameter
-          const redirectTo = searchParams.get('redirectTo')
-          if (redirectTo) {
-            router.push(redirectTo)
-          } else {
-            router.push('/dashboard')
+        // Handle auth events - only redirect on actual sign-in, not session restoration
+        if (event === 'SIGNED_IN' && session?.user) {
+          // Only redirect if we're currently on the home page (to avoid redirecting from other pages)
+          if (window.location.pathname === '/') {
+            // Check for redirect parameter
+            const redirectTo = searchParams.get('redirectTo')
+            if (redirectTo) {
+              router.push(redirectTo)
+            } else {
+              router.push('/dashboard')
+            }
           }
         } else if (event === 'SIGNED_OUT') {
           router.push('/')

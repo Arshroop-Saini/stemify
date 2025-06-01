@@ -9,6 +9,7 @@ import { useAuth } from '@/components/auth-provider'
 import { cn } from '@/lib/utils'
 import { AudioPreview } from '@/components/audio-preview'
 import { toast } from 'sonner'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 // Unified AudioFile interface matching database structure
 interface AudioFile {
@@ -54,6 +55,32 @@ export function FileLibrary({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [deletingFileId, setDeletingFileId] = useState<string | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [filesPerPage] = useState(3)
+
+  // Pagination calculations
+  const totalPages = Math.ceil(files.length / filesPerPage)
+  const startIndex = (currentPage - 1) * filesPerPage
+  const endIndex = startIndex + filesPerPage
+  const currentFiles = files.slice(startIndex, endIndex)
+
+  // Reset to first page when files change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [files.length])
+
+  // Pagination handlers
+  const goToNextPage = () => {
+    setCurrentPage(prev => Math.min(prev + 1, totalPages))
+  }
+
+  const goToPrevPage = () => {
+    setCurrentPage(prev => Math.max(prev - 1, 1))
+  }
+
+  const goToPage = (page: number) => {
+    setCurrentPage(Math.max(1, Math.min(page, totalPages)))
+  }
 
   // Load user files and processing usage
   const loadFiles = useCallback(async () => {
@@ -191,7 +218,7 @@ export function FileLibrary({
             </div>
           ) : (
             <div className="space-y-3">
-              {files.map((file) => (
+              {currentFiles.map((file) => (
                 <div
                   key={file.id}
                   className={cn(
@@ -267,6 +294,36 @@ export function FileLibrary({
           )}
         </CardContent>
       </Card>
+
+      {/* Pagination Controls */}
+      {files.length > 0 && totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-muted-foreground">
+            Showing {startIndex + 1}-{Math.min(endIndex, files.length)} of {files.length} files
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={goToPrevPage}
+              disabled={currentPage === 1}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-sm text-muted-foreground px-2">
+              {currentPage} / {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={goToNextPage}
+              disabled={currentPage === totalPages}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
 
 {/* Audio Preview Section removed as per user request */}
     </div>

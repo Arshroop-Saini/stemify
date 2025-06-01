@@ -67,7 +67,7 @@ export const SUBSCRIPTION_TIERS = {
     maxStems: 4,
     availableStems: ["vocals", "drums", "bass", "other"],
     models: ["htdemucs"],
-    features: ["4 stems", "320kbps MP3", "Watermark"],
+    features: ["4 stems", "320kbps MP3", "Standard model"],
     watermark: true,
   },
   creator: {

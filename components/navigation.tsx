@@ -106,6 +106,7 @@ export function Navigation() {
                           Dashboard
                         </Link>
                       </DropdownMenuItem>
+
                       <DropdownMenuItem asChild>
                         <Link href="/settings" className="flex items-center text-sm font-sans">
                           <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5">

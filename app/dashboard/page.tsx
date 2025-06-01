@@ -149,6 +149,32 @@ export default function DashboardPage() {
             </p>
           </div>
 
+          {/* Upgrade Banner for Free Users */}
+          {userStats?.subscriptionTier === 'free' && (
+            <Card className="mb-8 border-2 border-accent/20 bg-gradient-to-r from-accent/5 to-accent/10">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 rounded-full bg-accent/10">
+                      <Crown className="w-6 h-6 text-accent" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-heading font-bold text-foreground">Unlock More Features</h3>
+                      <p className="text-gray-600 dark:text-gray-300">
+                        Upgrade to Creator or Studio plan for more processing time, better quality, and advanced features
+                      </p>
+                    </div>
+                  </div>
+                  <Link href="/subscriptions">
+                    <Button className="bg-accent hover:bg-accent/90 text-white font-medium">
+                      Upgrade Plan
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Quick Stats */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             <Card>
