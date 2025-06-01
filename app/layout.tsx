@@ -7,6 +7,7 @@ import { AuthError } from "@/components/auth-error";
 import { Navigation } from "@/components/navigation";
 import { StagewiseToolbar } from "@stagewise/toolbar-next";
 import { Toaster } from "@/components/ui/sonner";
+import { Analytics } from "@vercel/analytics/next";
 
 const inter = Inter({ 
   subsets: ["latin"],
@@ -68,6 +69,7 @@ export default function RootLayout({
             )}
           </AuthProvider>
         </ThemeProvider>
+        <Analytics />
       </body>
     </html>
   );
