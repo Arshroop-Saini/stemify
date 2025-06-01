@@ -8,7 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
-import { Loader2, Play, Music, Clock, Sparkles } from 'lucide-react'
+import { Loader2, Play, Music, Clock, Sparkles, Mic, Drum, Guitar, Piano, Volume2, Zap, Crown, Timer, CreditCard } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/components/auth-provider'
 import { SUBSCRIPTION_TIERS, SIEVE_CONFIG } from '@/lib/constants'
@@ -58,48 +58,48 @@ const STEM_OPTIONS = [
     id: 'vocals',
     name: 'Vocals',
     description: 'Lead and backing vocals',
-    icon: '🎤',
-    color: 'text-emerald-600 bg-emerald-50 border-emerald-200',
+    icon: Mic,
+    selectedColor: 'text-blue-600 bg-blue-50 border-blue-300',
     tier: 'free'
   },
   {
     id: 'drums',
     name: 'Drums',
     description: 'Drum kit and percussion',
-    icon: '🥁',
-    color: 'text-orange-600 bg-orange-50 border-orange-200',
+    icon: Drum,
+    selectedColor: 'text-red-600 bg-red-50 border-red-300',
     tier: 'free'
   },
   {
     id: 'bass',
     name: 'Bass',
     description: 'Bass guitar and synth bass',
-    icon: '🎸',
-    color: 'text-purple-600 bg-purple-50 border-purple-200',
+    icon: Volume2,
+    selectedColor: 'text-purple-600 bg-purple-50 border-purple-300',
     tier: 'free'
   },
   {
     id: 'other',
     name: 'Other',
     description: 'All other instruments',
-    icon: '🎼',
-    color: 'text-blue-600 bg-blue-50 border-blue-200',
+    icon: Music,
+    selectedColor: 'text-slate-600 bg-slate-50 border-slate-300',
     tier: 'free'
   },
   {
     id: 'guitar',
     name: 'Guitar',
     description: 'Electric and acoustic guitar',
-    icon: '🎻',
-    color: 'text-red-600 bg-red-50 border-red-200',
+    icon: Guitar,
+    selectedColor: 'text-orange-600 bg-orange-50 border-orange-300',
     tier: 'creator'
   },
   {
     id: 'piano',
     name: 'Piano',
     description: 'Piano and keyboard',
-    icon: '🎹',
-    color: 'text-indigo-600 bg-indigo-50 border-indigo-200',
+    icon: Piano,
+    selectedColor: 'text-cyan-600 bg-cyan-50 border-cyan-300',
     tier: 'creator'
   }
 ]
@@ -434,7 +434,9 @@ export function SeparationInterface({ selectedFile, className, onSeparationCompl
                     key={stem.id}
                     className={cn(
                       "relative p-4 rounded-lg border-2 transition-all cursor-pointer",
-                      isSelected ? `${stem.color} border-current` : "border-gray-200 hover:border-gray-300",
+                      isSelected 
+                        ? `${stem.selectedColor} border-current shadow-sm` 
+                        : "border-gray-200 dark:border-gray-700 bg-surface-light dark:bg-surface-dark hover:border-gray-300 dark:hover:border-gray-600",
                       isDisabled && "opacity-50 cursor-not-allowed"
                     )}
                     onClick={() => !isDisabled && handleStemToggle(stem.id)}
@@ -447,7 +449,7 @@ export function SeparationInterface({ selectedFile, className, onSeparationCompl
                       />
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
-                          <span className="text-lg">{stem.icon}</span>
+                          <stem.icon className="w-5 h-5" />
                           <span className="font-medium">{stem.name}</span>
                           {stem.tier !== 'free' && (
                             <Badge variant="outline" className="text-xs">
@@ -468,7 +470,8 @@ export function SeparationInterface({ selectedFile, className, onSeparationCompl
 
           {/* Quality Selection */}
           <div>
-            <Label className="text-base font-medium mb-4 block">
+            <Label className="text-base font-medium mb-4 block flex items-center gap-2">
+              <Zap className="w-4 h-4 text-accent" />
               Processing Quality
             </Label>
             <RadioGroup
@@ -476,72 +479,125 @@ export function SeparationInterface({ selectedFile, className, onSeparationCompl
               onValueChange={(value: string) => setQuality(value as 'standard' | 'pro')}
               className="space-y-3"
             >
-              <div className="flex items-center space-x-3 p-4 rounded-lg border hover:bg-surface-light/50 dark:hover:bg-surface-dark/50">
-                <RadioGroupItem value="standard" id="standard" />
-                <Label htmlFor="standard" className="flex-1 cursor-pointer">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="font-medium">Standard Quality</div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400">
-                        Fast processing, good quality separation
+              <div className={cn(
+                "relative flex items-center space-x-4 p-5 rounded-xl border-2 transition-all duration-200 cursor-pointer",
+                quality === 'standard' 
+                  ? "border-accent bg-accent/5 shadow-sm" 
+                  : "border-gray-200 hover:border-accent/50 hover:bg-accent/5"
+              )}>
+                <RadioGroupItem value="standard" id="standard" className="mt-1" />
+                <div className="flex-1">
+                  <Label htmlFor="standard" className="cursor-pointer">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <Zap className="w-4 h-4 text-blue-500" />
+                          <span className="font-semibold text-base">Standard Quality</span>
+                        </div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400">
+                          Fast processing • Good quality separation • Recommended for most users
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <Badge variant="secondary" className="font-mono text-xs">
+                          htdemucs
+                        </Badge>
+                        <div className="text-xs text-gray-500 mt-1">~2-3 min</div>
                       </div>
                     </div>
-                    <Badge variant="secondary">htdemucs</Badge>
-                  </div>
-                </Label>
+                  </Label>
+                </div>
               </div>
               
-              <div
-                className={cn(
-                  "flex items-center space-x-3 p-4 rounded-lg border hover:bg-surface-light/50 dark:hover:bg-surface-dark/50",
-                  !canUsePremiumFeature('creator') && "opacity-50"
-                )}
-              >
+              <div className={cn(
+                "relative flex items-center space-x-4 p-5 rounded-xl border-2 transition-all duration-200",
+                quality === 'pro' 
+                  ? "border-accent bg-accent/5 shadow-sm" 
+                  : "border-gray-200 hover:border-accent/50 hover:bg-accent/5",
+                !canUsePremiumFeature('creator') && "opacity-60 cursor-not-allowed"
+              )}>
                 <RadioGroupItem
                   value="pro"
                   id="pro"
                   disabled={!canUsePremiumFeature('creator')}
+                  className="mt-1"
                 />
-                <Label htmlFor="pro" className="flex-1 cursor-pointer">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">Pro Quality</span>
-                        {!canUsePremiumFeature('creator') && (
-                          <Badge variant="outline" className="text-xs">
-                            Upgrade Required
-                          </Badge>
-                        )}
+                <div className="flex-1">
+                  <Label htmlFor="pro" className={cn(
+                    "cursor-pointer",
+                    !canUsePremiumFeature('creator') && "cursor-not-allowed"
+                  )}>
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <Crown className="w-4 h-4 text-amber-500" />
+                          <span className="font-semibold text-base">Pro Quality</span>
+                          {!canUsePremiumFeature('creator') && (
+                            <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">
+                              Creator Plan Required
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400">
+                          Highest quality • Fine-tuned model • 4x processing time
+                        </div>
                       </div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400">
-                        Higher quality, 4x processing time
+                      <div className="text-right">
+                        <Badge variant="secondary" className="font-mono text-xs">
+                          htdemucs_ft
+                        </Badge>
+                        <div className="text-xs text-gray-500 mt-1">~8-12 min</div>
                       </div>
                     </div>
-                    <Badge variant="secondary">htdemucs_ft</Badge>
-                  </div>
-                </Label>
+                  </Label>
+                </div>
+                {!canUsePremiumFeature('creator') && (
+                  <div className="absolute inset-0 bg-gray-100/20 dark:bg-gray-800/20 rounded-xl pointer-events-none" />
+                )}
               </div>
             </RadioGroup>
           </div>
 
           {/* Processing Estimate */}
-          <div className="bg-surface-light dark:bg-surface-dark rounded-lg p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="font-medium flex items-center gap-2">
-                <Clock className="w-4 h-4" />
-                Processing Estimate
-              </h4>
-            </div>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="text-gray-600 dark:text-gray-400">Track Length:</span>
-                <div className="font-mono font-bold">{estimate.trackLength.toFixed(2)} minutes</div>
+          <div className="bg-gradient-to-br from-accent/5 via-accent/10 to-transparent border border-accent/20 rounded-xl p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="p-2 bg-accent/10 rounded-lg">
+                <Clock className="w-4 h-4 text-accent" />
               </div>
-              <div>
-                <span className="text-gray-600 dark:text-gray-400">Credits Required:</span>
-                <div className="font-mono font-bold">{estimate.cost} credits</div>
+              <h4 className="font-semibold text-base">Processing Estimate</h4>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="border rounded-lg p-4 bg-surface-light dark:bg-surface-dark shadow-sm">
+                <div className="flex items-center gap-2 mb-2">
+                  <Timer className="w-4 h-4 text-blue-500" />
+                  <span className="text-sm font-medium">Track Length</span>
+                </div>
+                <div className="font-mono text-xl font-bold">
+                  {estimate.trackLength.toFixed(2)}
+                  <span className="text-sm font-normal text-muted-foreground ml-1">min</span>
+                </div>
+              </div>
+              <div className="border rounded-lg p-4 bg-surface-light dark:bg-surface-dark shadow-sm">
+                <div className="flex items-center gap-2 mb-2">
+                  <CreditCard className="w-4 h-4 text-amber-500" />
+                  <span className="text-sm font-medium">Credits Required</span>
+                </div>
+                <div className="font-mono text-xl font-bold">
+                  {estimate.cost}
+                  <span className="text-sm font-normal text-muted-foreground ml-1">credits</span>
+                </div>
               </div>
             </div>
+            {quality === 'pro' && (
+              <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800/30">
+                <div className="flex items-center gap-2">
+                  <Crown className="w-4 h-4 text-amber-600" />
+                  <span className="text-sm text-amber-700 dark:text-amber-300">
+                    Pro quality uses 2x credits for enhanced processing
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Start Button */}

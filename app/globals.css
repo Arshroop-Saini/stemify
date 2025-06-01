@@ -96,6 +96,23 @@
     background-color: #1F1F23;
   }
 
+  /* Dark mode responsive variants - FIXED */
+  .dark .dark\:bg-surface-dark {
+    background-color: #1F1F23;
+  }
+
+  .dark .dark\:bg-surface-light {
+    background-color: #F3F4F6;
+  }
+
+  .dark .dark\:hover\:bg-surface-dark\/80 {
+    background-color: rgba(31, 31, 35, 0.8);
+  }
+
+  .dark .dark\:hover\:bg-surface-light\/80 {
+    background-color: rgba(243, 244, 246, 0.8);
+  }
+
   /* Accent Colors */
   .bg-accent {
     background-color: #22C55E;

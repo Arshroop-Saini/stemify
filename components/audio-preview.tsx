@@ -67,13 +67,13 @@ export function AudioPreview({
       // Create new WaveSurfer instance
       wavesurfer.current = WaveSurfer.create({
         container: waveformRef.current,
-        waveColor: '#22C55E',
-        progressColor: '#16A34A',
-        cursorColor: '#15803D',
+        waveColor: '#22C55E40', // Accent color with transparency
+        progressColor: '#22C55E', // Solid accent color
+        cursorColor: '#22C55E',
         barWidth: 2,
         barGap: 1,
         barRadius: 2,
-        height: 80,
+        height: 60,
         normalize: true,
         interact: true,
         hideScrollbar: true,
@@ -257,124 +257,134 @@ export function AudioPreview({
           </div>
         ) : (
           <>
-            {/* Waveform */}
-            <div className="relative">
-              <div 
-                ref={waveformRef} 
-                className={cn(
-                  "w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50",
-                  isLoading && "animate-pulse"
-                )}
-              />
-              {isLoading && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="flex items-center space-x-2 text-muted-foreground">
-                    <div className="w-4 h-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                    <span className="text-sm font-sans">Loading waveform...</span>
+            {/* Waveform Player */}
+            <div className="border rounded-lg p-4 bg-surface-light dark:bg-surface-dark shadow-sm">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-accent"></div>
+                  <span className="font-medium text-sm">Audio Preview</span>
+                  {error && (
+                    <span className="text-xs text-red-500" title={error}>⚠️ Error</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handlePlayPause}
+                    disabled={isLoading || !!error}
+                    className="h-8 w-8 p-0 text-accent hover:text-accent/80"
+                  >
+                    {isPlaying ? (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25v13.5m-7.5-13.5v13.5"/>
+                      </svg>
+                    ) : (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 010 1.972l-11.54 6.347a1.125 1.125 0 01-1.667-.986V5.653z"/>
+                      </svg>
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              {error ? (
+                <div className="h-10 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded flex items-center justify-center px-2">
+                  <span className="text-xs text-red-600 dark:text-red-400 text-center truncate" title={error}>{error}</span>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="relative">
+                    <div 
+                      ref={waveformRef} 
+                      className={cn(
+                        "cursor-pointer min-h-[60px] rounded",
+                        isLoading && "animate-pulse bg-gray-200 dark:bg-gray-700"
+                      )}
+                    />
+                    {isLoading && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="flex items-center space-x-2 text-muted-foreground">
+                          <div className="w-4 h-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                          <span className="text-xs font-sans">Loading waveform...</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex justify-between items-center text-xs text-gray-500">
+                    <span>{formatTime(currentTime)}</span>
+                    {isLoading && <span className="text-gray-400">Loading audio...</span>}
+                    <span>{formatTime(duration)}</span>
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Time Display */}
-            <div className="flex justify-between text-sm font-mono text-muted-foreground">
-              <span>{formatTime(currentTime)}</span>
-              <span>{formatTime(duration)}</span>
-            </div>
 
-            {/* Playback Controls */}
-            <div className="flex items-center justify-center space-x-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleSeekToStart}
-                disabled={isLoading}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 16.811c0 .864-.933 1.406-1.683.977l-7.108-4.062a1.125 1.125 0 010-1.953l7.108-4.062A1.125 1.125 0 0121 8.688v8.123zM11.25 16.811c0 .864-.933 1.406-1.683.977l-7.108-4.062a1.125 1.125 0 010-1.953L9.567 7.71a1.125 1.125 0 011.683.977v8.123z"/>
-                </svg>
-              </Button>
-
-              <Button
-                onClick={handlePlayPause}
-                disabled={isLoading}
-                className="bg-accent hover:bg-accent/90 text-white"
-                size="lg"
-              >
-                {isPlaying ? (
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25v13.5m-7.5-13.5v13.5"/>
-                  </svg>
-                ) : (
-                  <svg className="w-5 h-5 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 010 1.972l-11.54 6.347a1.125 1.125 0 01-1.667-.986V5.653z"/>
-                  </svg>
-                )}
-              </Button>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleStop}
-                disabled={isLoading}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 7.5A2.25 2.25 0 017.5 5.25h9a2.25 2.25 0 012.25 2.25v9a2.25 2.25 0 01-2.25 2.25h-9a2.25 2.25 0 01-2.25-2.25v-9z"/>
-                </svg>
-              </Button>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleSeekToEnd}
-                disabled={isLoading}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 8.688c0-.864.933-1.405 1.683-.977l7.108 4.062a1.125 1.125 0 010 1.953l-7.108 4.062A1.125 1.125 0 013 16.81V8.688zM12.75 8.688c0-.864.933-1.405 1.683-.977l7.108 4.062a1.125 1.125 0 010 1.953l-7.108 4.062a1.125 1.125 0 01-1.683-.977V8.688z"/>
-                </svg>
-              </Button>
-            </div>
 
             {/* Advanced Controls */}
-            <div className="grid grid-cols-2 gap-4">
-              {/* Volume Control */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium text-foreground">Volume</label>
-                  <span className="text-sm text-muted-foreground font-mono">{volume[0]}%</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <svg className="w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.59-.71-1.59-1.59V9.91c0-.88.71-1.59 1.59-1.59h2.24z"/>
+            <div className="border rounded-lg p-5 bg-surface-light dark:bg-surface-dark shadow-sm">
+              <div className="flex items-center gap-2 mb-6">
+                <div className="p-2 bg-accent/10 rounded-lg">
+                  <svg className="w-4 h-4 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m0 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75"/>
                   </svg>
-                  <Slider
-                    value={volume}
-                    onValueChange={setVolume}
-                    max={100}
-                    step={1}
-                    className="flex-1"
-                  />
                 </div>
+                <h4 className="font-heading font-semibold text-base">Audio Controls</h4>
               </div>
-
-              {/* Playback Speed */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium text-foreground">Speed</label>
-                  <span className="text-sm text-muted-foreground font-mono">{playbackRate[0]}x</span>
+              
+              <div className="grid grid-cols-2 gap-6">
+                {/* Volume Control */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-4 h-4 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.59-.71-1.59-1.59V9.91c0-.88.71-1.59 1.59-1.59h2.24z"/>
+                      </svg>
+                      <label className="text-sm font-medium">Volume</label>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm font-mono bg-accent/10 text-accent px-2 py-1 rounded-md min-w-[48px] text-center">
+                        {volume[0]}%
+                      </span>
+                    </div>
+                  </div>
+                  <div className="px-1">
+                    <Slider
+                      value={volume}
+                      onValueChange={setVolume}
+                      max={100}
+                      step={1}
+                      className="w-full"
+                    />
+                  </div>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <svg className="w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 8.25V18a2.25 2.25 0 002.25 2.25h13.5A2.25 2.25 0 0021 18V8.25m-18 0V6a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 6v2.25m-18 0h18M9 12.75h6m-6 3h6"/>
-                  </svg>
-                  <Slider
-                    value={playbackRate}
-                    onValueChange={setPlaybackRate}
-                    min={0.5}
-                    max={2}
-                    step={0.1}
-                    className="flex-1"
-                  />
+
+                {/* Playback Speed */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-4 h-4 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 8.25V18a2.25 2.25 0 002.25 2.25h13.5A2.25 2.25 0 0021 18V8.25m-18 0V6a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 6v2.25m-18 0h18M9 12.75h6m-6 3h6"/>
+                      </svg>
+                      <label className="text-sm font-medium">Speed</label>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm font-mono bg-accent/10 text-accent px-2 py-1 rounded-md min-w-[48px] text-center">
+                        {playbackRate[0]}x
+                      </span>
+                    </div>
+                  </div>
+                  <div className="px-1">
+                    <Slider
+                      value={playbackRate}
+                      onValueChange={setPlaybackRate}
+                      min={0.5}
+                      max={2}
+                      step={0.1}
+                      className="w-full"
+                    />
+                  </div>
                 </div>
               </div>
             </div>

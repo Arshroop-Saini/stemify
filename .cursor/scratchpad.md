@@ -1335,3 +1335,35 @@ export const STEM_COSTS = {
 - **Formula Correct**: duration × 1.0 × model_multiplier ✅
 
 ---
+
+## 🚨 **✅ RESOLVED: DARK MODE COLOR SWITCHING BUG**
+
+### **🎉 ISSUE SUCCESSFULLY RESOLVED**
+The dark mode theme switching functionality now works correctly across the entire application, including the separation history cards and dropdown triggers in `components/separation-results.tsx`.
+
+### **✅ SOLUTION IMPLEMENTED**
+**Root Cause**: Tailwind CSS v4 doesn't automatically generate dark mode variants for custom utility classes.
+
+**Fix Applied**: Added missing dark mode responsive variants to `app/globals.css`:
+```css
+.dark .dark\:bg-surface-dark {
+  background-color: #1F1F23;
+}
+.dark .dark\:bg-surface-light {
+  background-color: #F3F4F6;
+}
+```
+
+### **🎯 VERIFIED WORKING**
+- ✅ Separation history cards properly switch colors in dark mode
+- ✅ Month dropdown triggers properly switch colors in dark mode
+- ✅ All hover states work correctly in both themes
+- ✅ Consistent behavior across all components
+
+### **📚 Key Lessons for Future**
+1. **Tailwind CSS v4**: Custom utility classes need explicit dark mode variants
+2. **Systematic Debugging**: Methodical approach identified root cause quickly
+3. **CSS Architecture**: Design system classes require proper responsive variant configuration
+4. **Test-Driven Fixes**: Debug elements helped verify solution before cleanup
+
+---

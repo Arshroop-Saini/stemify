@@ -46,10 +46,11 @@ function StemPlayer({ stem, url, filename }: { stem: string; url: string; filena
   const waveformRef = useRef<HTMLDivElement>(null)
   const wavesurfer = useRef<WaveSurfer | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const [error, setError] = useState<string | null>(null)
+  const [signedUrl, setSignedUrl] = useState<string | null>(null)
 
   // Color mapping for different stems
   const stemColors = {
@@ -67,162 +68,196 @@ function StemPlayer({ stem, url, filename }: { stem: string; url: string; filena
 
   const stemColor = stemColors[stem as keyof typeof stemColors] || '#6B7280'
 
+  // Fetch fresh signed URL if this is a Supabase storage URL
   useEffect(() => {
-    // Auto-initialize waveform when component mounts
-    if (url && waveformRef.current && !wavesurfer.current) {
-      initializeWaveform()
-    }
-    
-    return () => {
-      if (wavesurfer.current) {
-        wavesurfer.current.destroy()
-        wavesurfer.current = null
+    const fetchSignedUrl = async () => {
+      if (!url) return
+
+      // Check if this is a Supabase storage URL that needs refreshing
+      if (url.includes('supabase') && url.includes('storage')) {
+        try {
+          const supabase = createClient()
+          // Extract the storage path from the URL
+          const urlParts = url.split('/storage/v1/object/sign/')
+          if (urlParts.length > 1) {
+            const pathPart = urlParts[1].split('?')[0] // Remove query params
+            const decodedPath = decodeURIComponent(pathPart)
+            
+            // Get fresh signed URL
+            const { data: urlData } = await supabase.storage
+              .from('separated-stems')
+              .createSignedUrl(decodedPath, 3600) // 1 hour expiry
+
+            if (urlData?.signedUrl) {
+              setSignedUrl(urlData.signedUrl)
+              return
+            }
+          }
+        } catch (error) {
+          console.error('Error refreshing signed URL:', error)
+        }
       }
+      
+      // Use original URL if not Supabase storage or refresh failed
+      setSignedUrl(url)
     }
+
+    fetchSignedUrl()
   }, [url])
 
-  const initializeWaveform = async () => {
-    if (!waveformRef.current || wavesurfer.current || !url) return
+  useEffect(() => {
+    let isMounted = true; // Flag to check if component is still mounted in async operations
 
-    setIsLoading(true)
-    setError(null)
-    
-    try {
-      // Clear any existing waveform
+    if (!signedUrl || !waveformRef.current) {
+      // No URL or container, clean up and reset states
       if (wavesurfer.current) {
-        try {
-          (wavesurfer.current as any).destroy()
-        } catch (e) {
-          // Ignore destroy errors
-        }
+        wavesurfer.current.destroy();
+        wavesurfer.current = null;
       }
-
-      // Clean the URL - remove trailing ? or other issues
-      const cleanUrl = url.endsWith('?') ? url.slice(0, -1) : url
-      console.log(`Testing audio accessibility for ${stem}:`, cleanUrl)
-
-      // First, test if the URL is actually accessible
-      try {
-        const testResponse = await fetch(cleanUrl, { 
-          method: 'HEAD',
-          mode: 'cors'
-        })
-        console.log(`URL test for ${stem}:`, testResponse.status, testResponse.statusText)
-        
-        if (!testResponse.ok) {
-          throw new Error(`HTTP ${testResponse.status}: ${testResponse.statusText}`)
-        }
-      } catch (fetchError) {
-        console.error(`URL not accessible for ${stem}:`, fetchError)
-        const errorMessage = fetchError instanceof Error ? fetchError.message : 'Network error'
-        setError(`File not accessible: ${errorMessage}`)
-        setIsLoading(false)
-        return
+      if (isMounted) {
+        setIsLoading(false);
+        setError(null);
+        setDuration(0);
+        setCurrentTime(0);
+        setIsPlaying(false);
       }
-
-      // Try a simple HTML5 audio test first
-      const testAudio = new Audio()
-      testAudio.crossOrigin = 'anonymous'
-      
-      const audioTestPromise = new Promise((resolve, reject) => {
-        testAudio.addEventListener('canplaythrough', resolve, { once: true })
-        testAudio.addEventListener('error', reject, { once: true })
-        testAudio.addEventListener('loadstart', () => console.log(`Audio loading started for ${stem}`))
-        testAudio.addEventListener('loadedmetadata', () => console.log(`Audio metadata loaded for ${stem}`))
-        testAudio.src = cleanUrl
-      })
-
-      try {
-        await audioTestPromise
-        console.log(`HTML5 audio test passed for ${stem}`)
-      } catch (audioError) {
-        console.error(`HTML5 audio test failed for ${stem}:`, audioError)
-        setError(`Audio format not supported`)
-        setIsLoading(false)
-        return
-      }
-
-      // If we get here, the audio should work, so create WaveSurfer
-      wavesurfer.current = WaveSurfer.create({
-        container: waveformRef.current,
-        waveColor: stemColor + '40',
-        progressColor: stemColor,
-        height: 40,
-        barWidth: 2,
-        barGap: 1,
-        barRadius: 2,
-        normalize: true,
-        cursorWidth: 2,
-        cursorColor: stemColor,
-        mediaControls: false,
-        interact: true
-      })
-
-      // Set up event listeners
-      wavesurfer.current.on('ready', () => {
-        setDuration(wavesurfer.current?.getDuration() || 0)
-        setIsLoading(false)
-        console.log(`WaveSurfer ready for ${stem}, duration:`, wavesurfer.current?.getDuration())
-      })
-
-      wavesurfer.current.on('audioprocess', () => {
-        setCurrentTime(wavesurfer.current?.getCurrentTime() || 0)
-      })
-
-      wavesurfer.current.on('play', () => {
-        setIsPlaying(true)
-        console.log(`WaveSurfer playing ${stem}`)
-      })
-      
-      wavesurfer.current.on('pause', () => {
-        setIsPlaying(false)
-        console.log(`WaveSurfer paused ${stem}`)
-      })
-
-      wavesurfer.current.on('finish', () => {
-        setIsPlaying(false)
-        console.log(`WaveSurfer finished ${stem}`)
-      })
-
-      wavesurfer.current.on('error', (err) => {
-        console.error(`WaveSurfer error for ${stem}:`, err)
-        setError(`Waveform error`)
-        setIsLoading(false)
-      })
-
-      console.log(`Loading waveform for ${stem}...`)
-      await wavesurfer.current.load(cleanUrl)
-      
-    } catch (error) {
-      console.error(`Critical error initializing waveform for ${stem}:`, error)
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-      setError(`Failed to initialize: ${errorMessage}`)
-      setIsLoading(false)
+      return;
     }
-  }
+
+    // Start of new waveform setup, reset states
+    if (isMounted) {
+      setIsLoading(true); // Set loading true at the start of an attempt
+      setError(null);
+      setCurrentTime(0);
+      setDuration(0);
+      setIsPlaying(false);
+    }
+
+    // **Crucially, destroy any existing instance AND clear the container HTML**
+    if (wavesurfer.current) {
+      wavesurfer.current.destroy();
+      wavesurfer.current = null;
+    }
+    if (waveformRef.current) { // Ensure ref is still valid before manipulating
+        waveformRef.current.innerHTML = ''; // Clear the container to prevent visual duplicates
+    }
+
+    const initWaveformAsync = async () => {
+      if (!isMounted || !waveformRef.current || !signedUrl) {
+        if (isMounted) setIsLoading(false); // Ensure loading stops if no URL or unmounted
+        return;
+      }
+      
+      // Ensure isLoading is true if we are proceeding with initialization
+      if (isMounted && !isLoading) setIsLoading(true);
+
+
+      let localWaveSurferInstance: WaveSurfer | null = null; 
+
+      try {
+        const cleanUrl = signedUrl.endsWith('?') ? signedUrl.slice(0, -1) : signedUrl;
+        console.log(`Initializing waveform for ${stem} with URL: ${cleanUrl}`);
+
+        if (!isMounted || !waveformRef.current) { 
+          if (isMounted) setIsLoading(false);
+          return;
+        }
+
+        localWaveSurferInstance = WaveSurfer.create({
+          container: waveformRef.current,
+          waveColor: stemColor + '40', progressColor: stemColor, height: 40,
+          barWidth: 2, barGap: 1, barRadius: 2, normalize: true,
+          cursorWidth: 2, cursorColor: stemColor, mediaControls: false, interact: true,
+        });
+
+        localWaveSurferInstance.on('ready', () => {
+          if (isMounted) {
+            setDuration(localWaveSurferInstance?.getDuration() || 0);
+            setIsLoading(false);
+            console.log(`WaveSurfer ready for ${stem}`);
+          }
+        });
+        localWaveSurferInstance.on('audioprocess', () => {
+          if (isMounted) {
+            setCurrentTime(localWaveSurferInstance?.getCurrentTime() || 0);
+          }
+        });
+        localWaveSurferInstance.on('play', () => { if (isMounted) setIsPlaying(true); });
+        localWaveSurferInstance.on('pause', () => { if (isMounted) setIsPlaying(false); });
+        localWaveSurferInstance.on('finish', () => { if (isMounted) setIsPlaying(false); });
+        localWaveSurferInstance.on('error', (err: any) => {
+          if (isMounted) {
+            console.error(`WaveSurfer error for ${stem}:`, err);
+            const message = typeof err === 'string' ? err : (err.message || 'Unknown WaveSurfer error');
+            setError(`Waveform error: ${message}`);
+            setIsLoading(false);
+          }
+        });
+
+        if (isMounted) {
+          wavesurfer.current = localWaveSurferInstance;
+        } else {
+          localWaveSurferInstance.destroy(); 
+          if(isMounted) setIsLoading(false); 
+          return;
+        }
+
+        const loadPromise = wavesurfer.current.load(cleanUrl);
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error("Waveform loading timed out after 20 seconds")), 20000)
+        );
+
+        await Promise.race([loadPromise, timeoutPromise]);
+        
+      } catch (e: any) {
+        if (isMounted) {
+          console.error(`Critical error initializing waveform for ${stem}:`, e);
+          setError(`Failed to initialize: ${e.message || 'Unknown error'}`);
+          setIsLoading(false); 
+        }
+        if (localWaveSurferInstance && localWaveSurferInstance !== wavesurfer.current) {
+            localWaveSurferInstance.destroy();
+        }
+      }
+    };
+
+    initWaveformAsync();
+
+    return () => {
+      isMounted = false;
+      // This cleanup runs when component unmounts or deps change.
+      // It should destroy the instance that wavesurfer.current points to.
+      if (wavesurfer.current) {
+        wavesurfer.current.destroy();
+        wavesurfer.current = null;
+        console.log(`WaveSurfer instance for ${stem} destroyed on cleanup.`);
+      }
+    };
+  }, [signedUrl, stem, stemColor]); // Dependencies: signedUrl change triggers re-init. stem & stemColor for correctness.
 
   const togglePlayPause = async () => {
-    if (!wavesurfer.current) {
-      console.log(`No waveform for ${stem}, initializing...`)
-      await initializeWaveform()
-      return
-    }
-
-    try {
-      if (isPlaying) {
-        wavesurfer.current.pause()
-      } else {
-        await wavesurfer.current.play()
+    if (wavesurfer.current && !isLoading && !error) {
+      try {
+        if (isPlaying) {
+          wavesurfer.current.pause();
+        } else {
+          await wavesurfer.current.play();
+        }
+      } catch (e: any) {
+        console.error(`Error toggling playback for ${stem}:`, e);
+        setError(`Playback error: ${e.message || 'Unknown error'}`);
       }
-    } catch (error) {
-      console.error(`Error toggling playback for ${stem}:`, error)
-      setError('Playback error')
+    } else {
+      console.warn(`Toggle play attempted for ${stem} but waveform not ready, still loading, or in error state.`);
+      if (isLoading) toast.error("Waveform is still loading.");
+      else if (error) toast.error("Cannot play, waveform has an error.");
+      else if (!signedUrl) toast.error("No audio URL to play.");
     }
-  }
+  };
 
   const handleDownload = async () => {
     try {
-      const response = await fetch(url)
+      const response = await fetch(signedUrl || url)
       if (!response.ok) throw new Error(`HTTP ${response.status}`)
       
       const blob = await response.blob()
@@ -258,7 +293,7 @@ function StemPlayer({ stem, url, filename }: { stem: string; url: string; filena
           />
           <span className="font-medium text-sm capitalize">{stem.replace('_', ' ')}</span>
           {error && (
-            <span className="text-xs text-red-500">⚠️</span>
+            <span className="text-xs text-red-500" title={error}>⚠️ Error</span>
           )}
         </div>
         <div className="flex items-center gap-1">
@@ -266,13 +301,11 @@ function StemPlayer({ stem, url, filename }: { stem: string; url: string; filena
             variant="ghost"
             size="sm"
             onClick={togglePlayPause}
-            disabled={isLoading || !!error}
+            disabled={isLoading || !!error || !signedUrl}
             className="h-8 w-8 p-0"
             style={{ color: stemColor }}
           >
-            {isLoading ? (
-              <div className="w-4 h-4 animate-spin border-2 border-gray-300 border-t-current rounded-full" />
-            ) : isPlaying ? (
+            {isPlaying ? (
               <Pause className="w-4 h-4" />
             ) : (
               <Play className="w-4 h-4" />
@@ -291,8 +324,8 @@ function StemPlayer({ stem, url, filename }: { stem: string; url: string; filena
       </div>
 
       {error ? (
-        <div className="h-10 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded flex items-center justify-center">
-          <span className="text-xs text-red-600 dark:text-red-400">{error}</span>
+        <div className="h-10 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded flex items-center justify-center px-2">
+          <span className="text-xs text-red-600 dark:text-red-400 text-center truncate" title={error}>{error}</span>
         </div>
       ) : (
         <div className="space-y-2">
@@ -311,126 +344,221 @@ function StemPlayer({ stem, url, filename }: { stem: string; url: string; filena
   )
 }
 
-// Main track player component for original audio
-function MainTrackPlayer({ audioFileId, filename, duration }: { audioFileId: string; filename: string; duration?: number }) {
+// MainTrackPlayer component for playing original audio in modal
+function MainTrackPlayer({ jobId, audioFileId, trackName }: { jobId: string; audioFileId: string; trackName: string }) {
   const waveformRef = useRef<HTMLDivElement>(null)
   const wavesurfer = useRef<WaveSurfer | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
   const [currentTime, setCurrentTime] = useState(0)
-  const [audioDuration, setAudioDuration] = useState(duration || 0)
+  const [duration, setDuration] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [audioUrl, setAudioUrl] = useState<string | null>(null)
 
+  // Fetch the original audio file URL
   useEffect(() => {
-    // Fetch audio URL from Supabase storage
     const fetchAudioUrl = async () => {
       try {
         const supabase = createClient()
-        const { data, error } = await supabase
+        
+        // Get the audio file record
+        const { data: audioFile, error: fileError } = await supabase
           .from('audio_files')
-          .select('storage_path')
+          .select('storage_path, filename')
           .eq('id', audioFileId)
           .single()
 
-        if (error || !data) {
-          setError('Audio file not found')
-          return
+        if (fileError) {
+          console.error('Database error:', fileError)
+          throw new Error(`Database error: ${fileError.message}`)
         }
 
-        // Get signed URL for the audio file
-        const { data: urlData } = await supabase.storage
+        if (!audioFile) {
+          throw new Error('Audio file not found in database')
+        }
+
+        console.log('Audio file data:', audioFile)
+
+        // Use the correct bucket name 'audio-files'
+        const { data: urlData, error: urlError } = await supabase.storage
           .from('audio-files')
-          .createSignedUrl(data.storage_path, 3600) // 1 hour expiry
+          .createSignedUrl(audioFile.storage_path, 3600)
 
         if (urlData?.signedUrl) {
+          console.log('Success with audio-files bucket')
           setAudioUrl(urlData.signedUrl)
         } else {
-          setError('Could not load audio')
+          console.log('Failed with audio-files bucket:', urlError)
+          
+          // Try public URL as fallback
+          const { data: publicUrlData } = supabase.storage
+            .from('audio-files')
+            .getPublicUrl(audioFile.storage_path)
+          
+          if (publicUrlData?.publicUrl) {
+            console.log('Using public URL as fallback:', publicUrlData.publicUrl)
+            setAudioUrl(publicUrlData.publicUrl)
+          } else {
+            throw new Error('Could not get signed URL or public URL')
+          }
         }
-      } catch (err) {
-        console.error('Error fetching audio URL:', err)
-        setError('Failed to load audio')
+      } catch (error) {
+        console.error('Error fetching audio URL:', error)
+        setError('Failed to load original audio')
+        setIsLoading(false)
       }
     }
 
     fetchAudioUrl()
   }, [audioFileId])
 
+  // Initialize WaveSurfer when URL is available
   useEffect(() => {
-    if (audioUrl && waveformRef.current && !wavesurfer.current) {
-      initializeWaveform()
-    }
-    
-    return () => {
+    let isMounted = true
+
+    if (!audioUrl || !waveformRef.current) {
       if (wavesurfer.current) {
         wavesurfer.current.destroy()
         wavesurfer.current = null
       }
+      if (isMounted) {
+        setIsLoading(false)
+        setError(null)
+        setDuration(0)
+        setCurrentTime(0)
+        setIsPlaying(false)
+      }
+      return
+    }
+
+    if (isMounted) {
+      setIsLoading(true)
+      setError(null)
+      setCurrentTime(0)
+      setDuration(0)
+      setIsPlaying(false)
+    }
+
+    if (wavesurfer.current) {
+      wavesurfer.current.destroy()
+      wavesurfer.current = null
+    }
+    if (waveformRef.current) {
+      waveformRef.current.innerHTML = ''
+    }
+
+    const initWaveformAsync = async () => {
+      if (!isMounted || !waveformRef.current || !audioUrl) {
+        if (isMounted) setIsLoading(false)
+        return
+      }
+
+      let localWaveSurferInstance: WaveSurfer | null = null
+
+      try {
+        const cleanUrl = audioUrl.endsWith('?') ? audioUrl.slice(0, -1) : audioUrl
+        console.log(`Initializing waveform for original track with URL: ${cleanUrl}`)
+
+        if (!isMounted || !waveformRef.current) {
+          if (isMounted) setIsLoading(false)
+          return
+        }
+
+        localWaveSurferInstance = WaveSurfer.create({
+          container: waveformRef.current,
+          waveColor: '#22C55E40',
+          progressColor: '#22C55E',
+          height: 40,
+          barWidth: 2,
+          barGap: 1,
+          barRadius: 2,
+          normalize: true,
+          cursorWidth: 2,
+          cursorColor: '#22C55E',
+          mediaControls: false,
+          interact: true,
+        })
+
+        localWaveSurferInstance.on('ready', () => {
+          if (isMounted) {
+            setDuration(localWaveSurferInstance?.getDuration() || 0)
+            setIsLoading(false)
+            console.log('WaveSurfer ready for original track')
+          }
+        })
+        localWaveSurferInstance.on('audioprocess', () => {
+          if (isMounted) {
+            setCurrentTime(localWaveSurferInstance?.getCurrentTime() || 0)
+          }
+        })
+        localWaveSurferInstance.on('play', () => { if (isMounted) setIsPlaying(true) })
+        localWaveSurferInstance.on('pause', () => { if (isMounted) setIsPlaying(false) })
+        localWaveSurferInstance.on('finish', () => { if (isMounted) setIsPlaying(false) })
+        localWaveSurferInstance.on('error', (err: any) => {
+          if (isMounted) {
+            console.error('WaveSurfer error for original track:', err)
+            const message = typeof err === 'string' ? err : (err.message || 'Unknown WaveSurfer error')
+            setError(`Waveform error: ${message}`)
+            setIsLoading(false)
+          }
+        })
+
+        if (isMounted) {
+          wavesurfer.current = localWaveSurferInstance
+        } else {
+          localWaveSurferInstance.destroy()
+          if (isMounted) setIsLoading(false)
+          return
+        }
+
+        const loadPromise = wavesurfer.current.load(cleanUrl)
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error("Waveform loading timed out after 20 seconds")), 20000)
+        )
+
+        await Promise.race([loadPromise, timeoutPromise])
+        
+      } catch (e: any) {
+        if (isMounted) {
+          console.error('Critical error initializing waveform for original track:', e)
+          setError(`Failed to initialize: ${e.message || 'Unknown error'}`)
+          setIsLoading(false)
+        }
+        if (localWaveSurferInstance && localWaveSurferInstance !== wavesurfer.current) {
+          localWaveSurferInstance.destroy()
+        }
+      }
+    }
+
+    initWaveformAsync()
+
+    return () => {
+      isMounted = false
+      if (wavesurfer.current) {
+        wavesurfer.current.destroy()
+        wavesurfer.current = null
+        console.log('WaveSurfer instance for original track destroyed on cleanup.')
+      }
     }
   }, [audioUrl])
 
-  const initializeWaveform = async () => {
-    if (!waveformRef.current || wavesurfer.current || !audioUrl) return
-
-    setIsLoading(true)
-    setError(null)
-    
-    try {
-      wavesurfer.current = WaveSurfer.create({
-        container: waveformRef.current,
-        waveColor: '#22C55E40',
-        progressColor: '#22C55E',
-        height: 60,
-        barWidth: 2,
-        barGap: 1,
-        barRadius: 2,
-        normalize: true,
-        cursorWidth: 2,
-        cursorColor: '#22C55E',
-        mediaControls: false,
-        interact: true
-      })
-
-      wavesurfer.current.on('ready', () => {
-        setAudioDuration(wavesurfer.current?.getDuration() || 0)
-        setIsLoading(false)
-      })
-
-      wavesurfer.current.on('audioprocess', () => {
-        setCurrentTime(wavesurfer.current?.getCurrentTime() || 0)
-      })
-
-      wavesurfer.current.on('play', () => setIsPlaying(true))
-      wavesurfer.current.on('pause', () => setIsPlaying(false))
-      wavesurfer.current.on('finish', () => setIsPlaying(false))
-      wavesurfer.current.on('error', (err) => {
-        console.error('WaveSurfer error:', err)
-        setError('Waveform error')
-        setIsLoading(false)
-      })
-
-      await wavesurfer.current.load(audioUrl)
-      
-    } catch (error) {
-      console.error('Error initializing main track waveform:', error)
-      setError('Failed to initialize audio')
-      setIsLoading(false)
-    }
-  }
-
   const togglePlayPause = async () => {
-    if (!wavesurfer.current) return
-
-    try {
-      if (isPlaying) {
-        wavesurfer.current.pause()
-      } else {
-        await wavesurfer.current.play()
+    if (wavesurfer.current && !isLoading && !error) {
+      try {
+        if (isPlaying) {
+          wavesurfer.current.pause()
+        } else {
+          await wavesurfer.current.play()
+        }
+      } catch (e: any) {
+        console.error('Error toggling playback for original track:', e)
+        setError(`Playback error: ${e.message || 'Unknown error'}`)
       }
-    } catch (error) {
-      console.error('Error toggling playback:', error)
-      setError('Playback error')
+    } else {
+      console.warn('Toggle play attempted for original track but waveform not ready, still loading, or in error state.')
+      if (isLoading) toast.error("Waveform is still loading.")
+      else if (error) toast.error("Cannot play, waveform has an error.")
+      else if (!audioUrl) toast.error("No audio URL to play.")
     }
   }
 
@@ -441,45 +569,46 @@ function MainTrackPlayer({ audioFileId, filename, duration }: { audioFileId: str
   }
 
   return (
-    <div className="border rounded-lg p-4 bg-accent/5 border-accent/20">
+    <div className="border rounded-lg p-3 bg-surface-light dark:bg-surface-dark shadow-sm">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded-full bg-accent" />
-          <span className="font-medium text-accent">Original Track</span>
-          <span className="text-sm text-gray-500">{filename}</span>
-          {error && <span className="text-xs text-red-500">⚠️</span>}
-        </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={togglePlayPause}
-          disabled={isLoading || !!error || !audioUrl}
-          className="h-10 w-10 p-0 text-accent hover:bg-accent/10"
-        >
-          {isLoading ? (
-            <div className="w-5 h-5 animate-spin border-2 border-gray-300 border-t-accent rounded-full" />
-          ) : isPlaying ? (
-            <Pause className="w-5 h-5" />
-          ) : (
-            <Play className="w-5 h-5" />
+          <div className="w-3 h-3 rounded-full bg-accent"></div>
+          <span className="font-medium text-sm">{trackName}</span>
+          {error && (
+            <span className="text-xs text-red-500" title={error}>⚠️ Error</span>
           )}
-        </Button>
+        </div>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={togglePlayPause}
+            disabled={isLoading || !!error || !audioUrl}
+            className="h-8 w-8 p-0 text-accent hover:text-accent/80"
+          >
+            {isPlaying ? (
+              <Pause className="w-4 h-4" />
+            ) : (
+              <Play className="w-4 h-4" />
+            )}
+          </Button>
+        </div>
       </div>
 
       {error ? (
-        <div className="h-15 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded flex items-center justify-center">
-          <span className="text-xs text-red-600 dark:text-red-400">{error}</span>
+        <div className="h-10 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded flex items-center justify-center px-2">
+          <span className="text-xs text-red-600 dark:text-red-400 text-center truncate" title={error}>{error}</span>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2">
           <div 
             ref={waveformRef} 
-            className="cursor-pointer min-h-[60px] rounded bg-accent/5"
+            className="cursor-pointer min-h-[40px] rounded"
           />
-          <div className="flex justify-between items-center text-sm text-gray-500">
+          <div className="flex justify-between items-center text-xs text-gray-500">
             <span>{formatTime(currentTime)}</span>
             {isLoading && <span className="text-gray-400">Loading audio...</span>}
-            <span>{formatTime(audioDuration)}</span>
+            <span>{formatTime(duration)}</span>
           </div>
         </div>
       )}
@@ -923,7 +1052,7 @@ export function SeparationResults() {
               
               return (
                 <Collapsible key={monthKey} open={isOpen} onOpenChange={() => toggleMonth(monthKey)}>
-                  <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-surface-light dark:bg-surface-dark rounded-lg hover:bg-surface-light/70 dark:hover:bg-surface-dark/70 transition-colors">
+                  <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-surface-light dark:bg-surface-dark rounded-lg hover:bg-surface-light/80 dark:hover:bg-surface-dark/80 transition-colors">
                     <div className="flex items-center gap-2">
                       {isOpen ? (
                         <ChevronDown className="w-4 h-4" />
@@ -947,7 +1076,7 @@ export function SeparationResults() {
                         return (
                           <Card 
                             key={job.id} 
-                            className="bg-surface-light dark:bg-surface-dark cursor-pointer hover:bg-surface-light/70 dark:hover:bg-surface-dark/70 transition-colors"
+                            className="bg-surface-light dark:bg-surface-dark cursor-pointer hover:bg-surface-light/80 dark:hover:bg-surface-dark/80 transition-colors"
                             onClick={() => openJobModal(job)}
                           >
                             <CardContent className="p-4 space-y-4">
@@ -990,67 +1119,6 @@ export function SeparationResults() {
                                 </div>
                               </div>
 
-                              {/* Main Track Player */}
-                              {job.audio_file_id && (
-                                <MainTrackPlayer
-                                  audioFileId={job.audio_file_id}
-                                  filename={job.audio_files?.original_name || 'Unknown file'}
-                                  duration={job.audio_files?.duration}
-                                />
-                              )}
-
-                              {/* Stems Dropdown */}
-                              {job.result_files && job.result_files.length > 0 && (
-                                <div className="space-y-3">
-                                  <Button
-                                    variant="outline"
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      toggleJobExpansion(job.id)
-                                    }}
-                                    className="w-full justify-between"
-                                  >
-                                    <span className="flex items-center gap-2">
-                                      <Volume2 className="w-4 h-4" />
-                                      Separated Stems ({job.result_files.length})
-                                    </span>
-                                    {isJobExpanded ? (
-                                      <ChevronDown className="w-4 h-4" />
-                                    ) : (
-                                      <ChevronRight className="w-4 h-4" />
-                                    )}
-                                  </Button>
-                                  
-                                  {isJobExpanded && (
-                                    <div className="grid gap-3 pt-2">
-                                      {job.result_files.map((file, index) => {
-                                        const stemName = file.stem || file.name || `stem_${index}`
-                                        const fileUrl = file.url
-                                        
-                                        if (!fileUrl) {
-                                          return (
-                                            <div key={index} className="border rounded-lg p-3 bg-red-50 dark:bg-red-900/20">
-                                              <div className="text-sm text-red-600 dark:text-red-400">
-                                                {stemName}: URL not available
-                                              </div>
-                                            </div>
-                                          )
-                                        }
-                                        
-                                        return (
-                                          <StemPlayer
-                                            key={`${job.id}-${stemName}-${index}`}
-                                            stem={stemName}
-                                            url={fileUrl}
-                                            filename={`${job.audio_files?.original_name?.replace(/\.[^/.]+$/, '')}_${stemName}.wav`}
-                                          />
-                                        )
-                                      })}
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-
                               {/* Debug Info for Failed Jobs */}
                               {job.status === 'completed' && (!job.result_files || job.result_files.length === 0) && (
                                 <div className="space-y-2">
@@ -1074,6 +1142,20 @@ export function SeparationResults() {
                               {job.status === 'failed' && (
                                 <div className="text-sm text-red-600 dark:text-red-400">
                                   Separation failed. Please try again.
+                                </div>
+                              )}
+
+                              {/* Original Track Preview */}
+                              {job.status === 'completed' && (
+                                <div className="pt-4" onClick={(e) => e.stopPropagation()}>
+                                  <div className="mb-2">
+                                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Original Track</span>
+                                  </div>
+                                  <MainTrackPlayer 
+                                    jobId={job.id}
+                                    audioFileId={job.audio_file_id}
+                                    trackName={job.audio_files?.original_name || 'Original Audio'}
+                                  />
                                 </div>
                               )}
                             </CardContent>
@@ -1117,43 +1199,64 @@ export function SeparationResults() {
             
             {/* Body */}
             <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
-              {/* Main Track */}
-              <div className="mb-6">
-                <MainTrackPlayer
+              {/* Original Track */}
+              <div className="space-y-4 mb-6">
+                <h3 className="text-lg font-heading font-semibold mb-4">Original Track</h3>
+                <MainTrackPlayer 
+                  jobId={selectedJobForModal.id}
                   audioFileId={selectedJobForModal.audio_file_id}
-                  filename={selectedJobForModal.audio_files?.original_name || 'Unknown file'}
-                  duration={selectedJobForModal.audio_files?.duration}
+                  trackName={selectedJobForModal.audio_files?.original_name || 'Original Audio'}
                 />
               </div>
-              
+
               {/* Stems */}
               {selectedJobForModal.result_files && selectedJobForModal.result_files.length > 0 ? (
                 <div className="space-y-4">
                   <h3 className="text-lg font-heading font-semibold mb-4">Separated Stems</h3>
                   <div className="grid gap-4">
-                    {selectedJobForModal.result_files.map((file, index) => {
-                      const stemName = file.stem || file.name || `stem_${index}`
-                      const fileUrl = file.url
-                      
-                      if (!fileUrl) {
-                        return (
-                          <div key={index} className="border rounded-lg p-3 bg-red-50 dark:bg-red-900/20">
-                            <div className="text-sm text-red-600 dark:text-red-400">
-                              {stemName}: URL not available
-                            </div>
-                          </div>
+                    {(() => {
+                      // Deduplicate stems by both name AND URL to prevent double waveforms
+                      const uniqueStems = selectedJobForModal.result_files.reduce((acc, file, index) => {
+                        const stemName = file.stem || file.name || `stem_${index}`
+                        const fileUrl = file.url
+                        
+                        // Only add if we haven't seen this stem name AND URL combination before
+                        const existingStem = acc.find(item => 
+                          item.stemName === stemName || item.fileUrl === fileUrl
                         )
-                      }
+                        
+                        if (!existingStem && fileUrl) {
+                          acc.push({
+                            stemName,
+                            fileUrl,
+                            originalIndex: index
+                          })
+                        }
+                        
+                        return acc
+                      }, [] as Array<{ stemName: string; fileUrl: string; originalIndex: number }>)
                       
-                      return (
-                        <StemPlayer
-                          key={`${selectedJobForModal.id}-${stemName}-${index}`}
-                          stem={stemName}
-                          url={fileUrl}
-                          filename={`${selectedJobForModal.audio_files?.original_name?.replace(/\.[^/.]+$/, '')}_${stemName}.wav`}
-                        />
-                      )
-                    })}
+                      return uniqueStems.map(({ stemName, fileUrl, originalIndex }) => {
+                        if (!fileUrl) {
+                          return (
+                            <div key={originalIndex} className="border rounded-lg p-3 bg-red-50 dark:bg-red-900/20">
+                              <div className="text-sm text-red-600 dark:text-red-400">
+                                {stemName}: URL not available
+                              </div>
+                            </div>
+                          )
+                        }
+                        
+                        return (
+                          <StemPlayer
+                            key={`${selectedJobForModal.id}-${stemName}-${fileUrl.slice(-8)}`}
+                            stem={stemName}
+                            url={fileUrl}
+                            filename={`${selectedJobForModal.audio_files?.original_name?.replace(/\.[^/.]+$/, '')}_${stemName}.wav`}
+                          />
+                        )
+                      })
+                    })()}
                   </div>
                 </div>
               ) : (

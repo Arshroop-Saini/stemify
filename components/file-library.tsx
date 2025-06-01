@@ -268,15 +268,7 @@ export function FileLibrary({
         </CardContent>
       </Card>
 
-      {/* Audio Preview Section */}
-      {selectedFile && (
-        <div className="border-t border-border pt-6">
-          <AudioPreview 
-            file={selectedFile}
-            autoLoad={true}
-          />
-        </div>
-      )}
+{/* Audio Preview Section removed as per user request */}
     </div>
   )
 } 

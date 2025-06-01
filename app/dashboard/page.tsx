@@ -209,15 +209,15 @@ export default function DashboardPage() {
             </Card>
           </div>
 
-          {/* Main Content - Three Column Layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            {/* Left Column - File Upload (4 columns) */}
-            <div className="lg:col-span-4">
+          {/* Main Content - Improved 2x2 Grid Layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Top Left - File Upload (Most Important Action) */}
+            <div className="order-1">
               <FileUpload onUploadComplete={handleUploadComplete} />
             </div>
 
-            {/* Middle Column - File Library (4 columns) */}
-            <div className="lg:col-span-4">
+            {/* Top Right - File Library */}
+            <div className="order-2">
               <FileLibrary 
                 onFileSelect={handleFileSelected}
                 refreshTrigger={refreshTrigger}
@@ -226,31 +226,43 @@ export default function DashboardPage() {
               />
             </div>
 
-            {/* Right Column - Separation Interface (4 columns) */}
-            <div className="lg:col-span-4">
+            {/* Bottom Left - Audio Preview */}
+            <div className="order-3">
+              {selectedFile ? (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Play className="w-5 h-5 text-accent" />
+                      Audio Preview
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <AudioPreview file={selectedFile} />
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card className="h-full flex items-center justify-center border-dashed border-gray-300 dark:border-gray-600">
+                  <CardContent className="text-center py-12">
+                    <Play className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-heading font-medium text-gray-600 dark:text-gray-300 mb-2">
+                      No file selected
+                    </h3>
+                    <p className="text-gray-500 dark:text-gray-400">
+                      Upload or select a file to preview
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+
+            {/* Bottom Right - Separation Interface */}
+            <div className="order-4">
               <SeparationInterface
                 selectedFile={selectedFile}
                 onSeparationComplete={handleSeparationComplete}
               />
             </div>
           </div>
-
-          {/* Audio Preview Section */}
-          {selectedFile && (
-            <div className="mt-8">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Play className="w-5 h-5 text-accent" />
-                    Audio Preview
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <AudioPreview file={selectedFile} />
-                </CardContent>
-              </Card>
-            </div>
-          )}
 
           {/* Separation Results History */}
           <div className="mt-8">
